@@ -14,8 +14,6 @@ const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
 const artworks = loadArtworks(manifest, allSlots, scene)
 
-const char = await loadCharacter(scene)
-
 // Keyboard state
 const keys = {}
 window.addEventListener('keydown', e => {
@@ -41,6 +39,11 @@ if (isMobile()) {
 
 const allRoomBounds = [lobby.bounds, ...allBounds]
 
+// Character starts null — rooms render immediately while it loads
+let char = null
+camera.position.set(0, 2.5, 6)
+camera.lookAt(0, 1, 2)
+
 startLoop(renderer, scene, camera, (delta) => {
   if (mobileControls) {
     const m = mobileControls.getMovementInput()
@@ -56,10 +59,17 @@ startLoop(renderer, scene, camera, (delta) => {
     input.right    = !!(keys['d'] || keys['arrowright'])
   }
 
-  if (!isFullscreen()) {
+  if (char && !isFullscreen()) {
     updateCharacter(char, delta, input, allRoomBounds)
     updateCamera(camera, char, input)
   }
 
-  checkProximity(artworks, char.mesh.position)
+  checkProximity(artworks, char ? char.mesh.position : camera.position)
 })
+
+// Load character model in background — failure won't break the gallery
+try {
+  char = await loadCharacter(scene)
+} catch (err) {
+  console.warn('Character model failed to load:', err)
+}
