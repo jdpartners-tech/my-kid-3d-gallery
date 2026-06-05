@@ -2,6 +2,7 @@ import { initScene, startLoop } from './scene.js'
 import { buildLobby, buildWings } from './rooms.js'
 import { loadCharacter, updateCharacter, updateCamera } from './character.js'
 import { loadArtworks, checkProximity, hideFullscreen, isFullscreen } from './artwork.js'
+import { isMobile, createMobileControls } from './mobile.js'
 
 const { scene, camera, renderer } = initScene()
 
@@ -32,13 +33,28 @@ window.addEventListener('mousemove', e => {
   if (dragging) { input.dx += e.clientX - lastMouseX; lastMouseX = e.clientX }
 })
 
+let mobileControls = null
+if (isMobile()) {
+  mobileControls = createMobileControls()
+  document.getElementById('hud').textContent = 'Use joystick to walk · Drag to look'
+}
+
 const allRoomBounds = [lobby.bounds, ...allBounds]
 
 startLoop(renderer, scene, camera, (delta) => {
-  input.forward  = !!(keys['w'] || keys['arrowup'])
-  input.backward = !!(keys['s'] || keys['arrowdown'])
-  input.left     = !!(keys['a'] || keys['arrowleft'])
-  input.right    = !!(keys['d'] || keys['arrowright'])
+  if (mobileControls) {
+    const m = mobileControls.getMovementInput()
+    input.forward  = m.forward
+    input.backward = m.backward
+    input.left     = m.left
+    input.right    = m.right
+    input.dx += mobileControls.getCameraDx()
+  } else {
+    input.forward  = !!(keys['w'] || keys['arrowup'])
+    input.backward = !!(keys['s'] || keys['arrowdown'])
+    input.left     = !!(keys['a'] || keys['arrowleft'])
+    input.right    = !!(keys['d'] || keys['arrowright'])
+  }
 
   if (!isFullscreen()) {
     updateCharacter(char, delta, input, allRoomBounds)
