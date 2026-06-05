@@ -1,16 +1,15 @@
-import * as THREE from 'three'
 import { initScene, startLoop } from './scene.js'
+import { buildLobby } from './rooms.js'
 
 const { scene, camera, renderer } = initScene()
 
-// Temp: rotating cube to verify scene works
-const cube = new THREE.Mesh(
-  new THREE.BoxGeometry(1, 1, 1),
-  new THREE.MeshStandardMaterial({ color: 0xffffff })
-)
-cube.position.set(0, 1, 5)
-scene.add(cube)
+const manifest = await fetch('manifest.json').then(r => r.json())
+const kidNames  = manifest.kids.map(k => k.name)
+const kidColors = manifest.kids.map(k => k.color)
 
-startLoop(renderer, scene, camera, (delta) => {
-  cube.rotation.y += delta
-})
+buildLobby(scene, kidNames, kidColors)
+
+camera.position.set(0, 2, -2)
+camera.lookAt(0, 1.5, 5)
+
+startLoop(renderer, scene, camera, () => {})
