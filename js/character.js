@@ -13,7 +13,7 @@ export async function loadCharacter(scene) {
   const mesh = gltf.scene
   mesh.scale.setScalar(1.0)
   mesh.position.set(0, 0, 2)
-  mesh.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true } })
+  mesh.traverse(c => { if (c.isMesh) { c.castShadow = false; c.receiveShadow = false } })
   scene.add(mesh)
 
   const mixer = new THREE.AnimationMixer(mesh)

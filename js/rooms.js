@@ -31,7 +31,6 @@ export function buildLobby(scene, kidNames, kidColors) {
   // Floor
   const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.floor)
   floor.position.set(cx, -0.05, cz)
-  floor.receiveShadow = true
   scene.add(floor)
 
   // Ceiling
@@ -139,7 +138,6 @@ function buildRoom(scene, cx, cz, openSouth = false) {
   // Floor
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.floor)
   floor.position.set(cx, -0.05, cz)
-  floor.receiveShadow = true
   scene.add(floor)
 
   // Ceiling
@@ -155,13 +153,11 @@ function buildRoom(scene, cx, cz, openSouth = false) {
   // Left wall
   const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
   leftWall.position.set(cx - ROOM_W / 2, ROOM_H / 2, cz)
-  leftWall.receiveShadow = true
   scene.add(leftWall)
 
   // Right wall
   const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
   rightWall.position.set(cx + ROOM_W / 2, ROOM_H / 2, cz)
-  rightWall.receiveShadow = true
   scene.add(rightWall)
 
   // Back wall (south) — omitted for first room so player can enter from the junction corridor
@@ -182,8 +178,7 @@ function buildRoom(scene, cx, cz, openSouth = false) {
   ].forEach(([px, py, pw, ph]) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 0.15), MATS.wall)
     m.position.set(px, py, frontZ)
-    m.receiveShadow = true
-    scene.add(m)
+      scene.add(m)
   })
 
   // Artwork spotlights + slots

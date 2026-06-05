@@ -25,7 +25,6 @@ export function loadArtworks(manifest, allSlots, scene) {
         new THREE.BoxGeometry(FRAME_W + FRAME_BORDER * 2, FRAME_H + FRAME_BORDER * 2, FRAME_THICK),
         FRAME_MAT.clone()
       )
-      frameMesh.castShadow = true
       frameGroup.add(frameMesh)
 
       const canvasMat = BLANK_MAT.clone()
