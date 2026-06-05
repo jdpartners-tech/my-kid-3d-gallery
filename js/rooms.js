@@ -17,8 +17,7 @@ const MATS = {
 function addSpotlight(scene, x, y, z, targetX, targetZ) {
   const light = new THREE.SpotLight(0xfff5e0, 2.5, 8, Math.PI / 6, 0.4)
   light.position.set(x, y, z)
-  light.castShadow = true
-  light.shadow.mapSize.set(512, 512)
+  light.castShadow = false
   const target = new THREE.Object3D()
   target.position.set(targetX, ARTWORK_Y, targetZ)
   scene.add(target)
