@@ -1,0 +1,14 @@
+{
+  "kids": [
+    {
+      "name": "Kid 1",
+      "color": "#70d0c0",
+      "artworks": []
+    },
+    {
+      "name": "Kid 2",
+      "color": "#d070c0",
+      "artworks": []
+    }
+  ]
+}
