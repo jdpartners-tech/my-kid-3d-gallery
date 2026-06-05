@@ -1,6 +1,7 @@
 import { initScene, startLoop } from './scene.js'
 import { buildLobby, buildWings } from './rooms.js'
 import { loadCharacter, updateCharacter, updateCamera } from './character.js'
+import { loadArtworks, checkProximity, hideFullscreen, isFullscreen } from './artwork.js'
 
 const { scene, camera, renderer } = initScene()
 
@@ -10,13 +11,17 @@ const kidColors = manifest.kids.map(k => k.color)
 
 const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
+const artworks = await loadArtworks(manifest, allSlots, scene)
 
 const char = await loadCharacter(scene)
 
 // Keyboard state
 const keys = {}
-window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true })
-window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false })
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') hideFullscreen()
+  keys[e.key.toLowerCase()] = true
+})
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false })
 
 // Mouse drag for camera
 const input = { forward: false, backward: false, left: false, right: false, dx: 0 }
@@ -35,6 +40,10 @@ startLoop(renderer, scene, camera, (delta) => {
   input.left     = !!(keys['a'] || keys['arrowleft'])
   input.right    = !!(keys['d'] || keys['arrowright'])
 
-  updateCharacter(char, delta, input, allRoomBounds)
-  updateCamera(camera, char, input)
+  if (!isFullscreen()) {
+    updateCharacter(char, delta, input, allRoomBounds)
+    updateCamera(camera, char, input)
+  }
+
+  checkProximity(artworks, char.mesh.position)
 })
