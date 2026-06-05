@@ -6,7 +6,7 @@ const MANIFEST_PATH = 'manifest.json'
 
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'))
 
-const kidDirs = ['artwork/kid1', 'artwork/kid2']
+const kidDirs = ['artwork/Kayden', 'artwork/Kaylie']
 
 kidDirs.forEach((dir, i) => {
   const existing = new Set(manifest.kids[i].artworks.map(a => a.file))
