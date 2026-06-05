@@ -1,5 +1,6 @@
 import { initScene, startLoop } from './scene.js'
 import { buildLobby, buildWings } from './rooms.js'
+import { loadCharacter, updateCharacter, updateCamera } from './character.js'
 
 const { scene, camera, renderer } = initScene()
 
@@ -10,8 +11,30 @@ const kidColors = manifest.kids.map(k => k.color)
 const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
 
-// Position camera inside Kid 1's first room to verify wings rendered
-camera.position.set(-10, 2, 15)
-camera.lookAt(-10, 1.5, 20)
+const char = await loadCharacter(scene)
 
-startLoop(renderer, scene, camera, () => {})
+// Keyboard state
+const keys = {}
+window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true })
+window.addEventListener('keyup',   e => { keys[e.key.toLowerCase()] = false })
+
+// Mouse drag for camera
+const input = { forward: false, backward: false, left: false, right: false, dx: 0 }
+let dragging = false, lastMouseX = 0
+window.addEventListener('mousedown', e => { dragging = true; lastMouseX = e.clientX })
+window.addEventListener('mouseup',   () => { dragging = false })
+window.addEventListener('mousemove', e => {
+  if (dragging) { input.dx += e.clientX - lastMouseX; lastMouseX = e.clientX }
+})
+
+const allRoomBounds = [lobby.bounds, ...allBounds]
+
+startLoop(renderer, scene, camera, (delta) => {
+  input.forward  = !!(keys['w'] || keys['arrowup'])
+  input.backward = !!(keys['s'] || keys['arrowdown'])
+  input.left     = !!(keys['a'] || keys['arrowleft'])
+  input.right    = !!(keys['d'] || keys['arrowright'])
+
+  updateCharacter(char, delta, input, allRoomBounds)
+  updateCamera(camera, char, input)
+})
