@@ -12,7 +12,7 @@ const kidColors = manifest.kids.map(k => k.color)
 
 const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
-const artworks = await loadArtworks(manifest, allSlots, scene)
+const artworks = loadArtworks(manifest, allSlots, scene)
 
 const char = await loadCharacter(scene)
 

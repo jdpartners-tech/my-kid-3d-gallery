@@ -136,7 +136,7 @@ export function buildLobby(scene, kidNames, kidColors) {
   }
 }
 
-function buildRoom(scene, cx, cz) {
+function buildRoom(scene, cx, cz, openSouth = false) {
   // Floor
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.floor)
   floor.position.set(cx, -0.05, cz)
@@ -165,10 +165,12 @@ function buildRoom(scene, cx, cz) {
   rightWall.receiveShadow = true
   scene.add(rightWall)
 
-  // Back wall (south — solid, connects to previous room or lobby)
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
-  backWall.position.set(cx, ROOM_H / 2, cz - ROOM_D / 2)
-  scene.add(backWall)
+  // Back wall (south) — omitted for first room so player can enter from the junction corridor
+  if (!openSouth) {
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
+    backWall.position.set(cx, ROOM_H / 2, cz - ROOM_D / 2)
+    scene.add(backWall)
+  }
 
   // Front wall (north) — with door opening to next room
   const frontZ = cz + ROOM_D / 2
@@ -211,6 +213,48 @@ export function buildWings(scene, manifest) {
   const allSlots = []
   const allBounds = []
 
+  // T-junction corridor: bridges the lobby north doors to the two wing room entrances.
+  // The lobby doors are at x=±2.5, z=10. The wings are at x=±10. The corridor lets
+  // the player walk laterally from a door to whichever wing they want.
+  const juncZ = LOBBY_D + 0.6        // corridor centre z = 10.6
+  const juncDepth = 1.4              // corridor spans z=10 to z=11.4 (approx)
+  const juncHalfD = juncDepth / 2
+  const fullSpan = LOBBY_W + ROOM_W  // =20, covers x=-10..+10 with some extra
+
+  // Floor bridge covering the gap between lobby and wing floors
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), MATS.floor)
+  bFloor.position.set(0, -0.05, juncZ)
+  bFloor.receiveShadow = true
+  scene.add(bFloor)
+
+  // Ceiling bridge
+  const bCeil = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), MATS.ceiling)
+  bCeil.position.set(0, ROOM_H, juncZ)
+  scene.add(bCeil)
+
+  // Back wall of junction (blocks the void between the two wings)
+  const bBack = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, ROOM_H, 0.15), MATS.wall)
+  bBack.position.set(0, ROOM_H / 2, LOBBY_D + juncDepth)
+  scene.add(bBack)
+
+  // Dim light in junction
+  const jLight = new THREE.PointLight(0xfff5e0, 0.6, 14)
+  jLight.position.set(0, ROOM_H - 0.3, juncZ)
+  scene.add(jLight)
+
+  // Bounds: narrow door passages (prevent walking through solid wall panels),
+  // then full-width lateral corridor past the wall.
+  const DOOR_HALF = DOOR_W / 2
+  allBounds.push(
+    // Left door passage
+    { xMin: -2.5 - DOOR_HALF, xMax: -2.5 + DOOR_HALF, zMin: LOBBY_D - 0.3, zMax: LOBBY_D + 0.3 },
+    // Right door passage
+    { xMin:  2.5 - DOOR_HALF, xMax:  2.5 + DOOR_HALF, zMin: LOBBY_D - 0.3, zMax: LOBBY_D + 0.3 },
+    // Full lateral corridor
+    { xMin: -(LOBBY_W / 2 + ROOM_W / 2 - 0.2), xMax: LOBBY_W / 2 + ROOM_W / 2 - 0.2,
+      zMin: LOBBY_D + 0.2, zMax: LOBBY_D + juncDepth - 0.1 }
+  )
+
   manifest.kids.forEach((kid, kidIdx) => {
     const wingX = kidIdx === 0 ? -10 : 10
     const artworks = kid.artworks
@@ -218,7 +262,7 @@ export function buildWings(scene, manifest) {
 
     for (let r = 0; r < roomCount; r++) {
       const cz = LOBBY_D + ROOM_D / 2 + r * ROOM_D
-      const { slots, bounds } = buildRoom(scene, wingX, cz)
+      const { slots, bounds } = buildRoom(scene, wingX, cz, r === 0)
 
       slots.forEach((slot, s) => {
         const artIdx = r * 6 + s

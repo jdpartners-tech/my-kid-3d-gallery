@@ -11,26 +11,11 @@ let activeArtwork = null
 
 const loader = new THREE.TextureLoader()
 
-export async function loadArtworks(manifest, allSlots, scene) {
+export function loadArtworks(manifest, allSlots, scene) {
   const artworks = []
 
-  const texturePromises = manifest.kids.flatMap(kid =>
-    kid.artworks.map(a =>
-      new Promise(resolve =>
-        loader.load(a.file,
-          tex => { tex.colorSpace = THREE.SRGBColorSpace; resolve(tex) },
-          undefined,
-          () => resolve(null)
-        )
-      )
-    )
-  )
-  const textures = await Promise.all(texturePromises)
-
-  let texIdx = 0
   manifest.kids.forEach((kid, kidIdx) => {
     kid.artworks.forEach((artworkData, artIdx) => {
-      const tex = textures[texIdx++]
       const slot = allSlots.find(s => s.kidIndex === kidIdx && s.artworkIndex === artIdx)
       if (!slot) return
 
@@ -43,10 +28,8 @@ export async function loadArtworks(manifest, allSlots, scene) {
       frameMesh.castShadow = true
       frameGroup.add(frameMesh)
 
-      const canvasMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(FRAME_W, FRAME_H),
-        tex ? new THREE.MeshStandardMaterial({ map: tex }) : BLANK_MAT
-      )
+      const canvasMat = BLANK_MAT.clone()
+      const canvasMesh = new THREE.Mesh(new THREE.PlaneGeometry(FRAME_W, FRAME_H), canvasMat)
       canvasMesh.position.z = FRAME_THICK / 2 + 0.001
       frameGroup.add(canvasMesh)
 
@@ -56,12 +39,26 @@ export async function loadArtworks(manifest, allSlots, scene) {
 
       scene.add(frameGroup)
 
-      artworks.push({
+      const artwork = {
         group: frameGroup,
         position: frameGroup.position.clone(),
         data: artworkData,
         glowMesh: frameMesh,
-      })
+      }
+      artworks.push(artwork)
+
+      // Load texture in background — frame shows blank until ready
+      loader.load(
+        artworkData.file,
+        tex => {
+          tex.colorSpace = THREE.SRGBColorSpace
+          canvasMat.map = tex
+          canvasMat.color.set(0xffffff)
+          canvasMat.needsUpdate = true
+        },
+        undefined,
+        () => {} // stay blank on error
+      )
     })
   })
 
@@ -69,8 +66,6 @@ export async function loadArtworks(manifest, allSlots, scene) {
 }
 
 export function checkProximity(artworks, charPos) {
-  const overlay = document.getElementById('fullscreen-overlay')
-
   if (activeArtwork) {
     if (charPos.distanceTo(activeArtwork.position) > PROXIMITY_THRESHOLD + HYSTERESIS) {
       hideFullscreen()
