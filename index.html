@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Kid 3D Gallery</title>
+  <link rel="stylesheet" href="css/landing.css">
+</head>
+<body>
+  <div class="hero">
+    <h1>My Kid 3D Gallery</h1>
+    <p>A virtual museum of our children's artwork.<br>Walk through the halls and discover their world.</p>
+    <a class="enter-btn" href="gallery.html">Enter Gallery</a>
+  </div>
+
+  <script>
+    for (let i = 0; i < 40; i++) {
+      const s = document.createElement('div')
+      s.className = 'star'
+      const size = Math.random() * 2 + 1
+      s.style.cssText = `
+        width:${size}px; height:${size}px;
+        top:${Math.random()*100}vh; left:${Math.random()*100}vw;
+        animation-delay:${Math.random()*3}s;
+        animation-duration:${2+Math.random()*3}s;
+      `
+      document.body.appendChild(s)
+    }
+  </script>
+</body>
+</html>
