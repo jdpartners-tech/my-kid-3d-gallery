@@ -52,7 +52,7 @@ export async function loadArtworks(manifest, allSlots, scene) {
 
       frameGroup.position.copy(slot.position)
       frameGroup.position.x += slot.normalX * (FRAME_THICK / 2 + 0.02)
-      frameGroup.rotation.y = slot.normalX > 0 ? 0 : Math.PI
+      frameGroup.rotation.y = -slot.normalX * Math.PI / 2
 
       scene.add(frameGroup)
 

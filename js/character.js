@@ -63,7 +63,7 @@ export function updateCharacter(char, delta, input, allBounds) {
   dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), char._yaw)
 
   if (dir.length() > 0.01) {
-    char.mesh.rotation.y = Math.atan2(dir.x, dir.z)
+    char.mesh.rotation.y = Math.atan2(-dir.x, -dir.z)
   }
 
   const next = char.mesh.position.clone().addScaledVector(dir, SPEED * delta)
