@@ -21,9 +21,59 @@ const MATS = {
     : new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.5, roughness: 0.3 }),
 }
 
-// Solid polished dark floor — rich warm ebony, no pattern to cause visual fatigue
-function makeFloorMat() {
-  return new THREE.MeshLambertMaterial({ color: 0x1e1a14 })
+// Procedural marble texture — warm Crema Marfil with natural bezier veining
+let _mSeed = 0
+function makeMarbleTex(seed) {
+  const S = 512
+  const cvs = document.createElement('canvas')
+  cvs.width = S; cvs.height = S
+  const ctx = cvs.getContext('2d')
+  let s = (seed * 1664525 + 1013904223) | 0
+  const rng = () => { s = (s * 1664525 + 1013904223) | 0; return (s >>> 0) / 4294967296 }
+
+  ctx.fillStyle = '#ece4ce'   // warm ivory base
+  ctx.fillRect(0, 0, S, S)
+
+  // Soft blurred deep veins
+  ctx.save(); ctx.filter = 'blur(5px)'
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath()
+    ctx.moveTo(rng() * S, rng() * S)
+    ctx.bezierCurveTo(rng() * S, rng() * S, rng() * S, rng() * S, rng() * S, rng() * S)
+    ctx.strokeStyle = `rgba(148,118,72,${0.15 + rng() * 0.2})`
+    ctx.lineWidth = 8 + rng() * 16
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // Mid-weight veins
+  for (let i = 0; i < 10; i++) {
+    ctx.beginPath()
+    ctx.moveTo(rng() * S, rng() * S)
+    ctx.quadraticCurveTo(rng() * S, rng() * S, rng() * S, rng() * S)
+    ctx.strokeStyle = `rgba(140,110,65,${0.2 + rng() * 0.25})`
+    ctx.lineWidth = 0.7 + rng() * 2.5
+    ctx.stroke()
+  }
+
+  // Hairline veins
+  for (let i = 0; i < 16; i++) {
+    ctx.beginPath()
+    ctx.moveTo(rng() * S, rng() * S)
+    ctx.lineTo(rng() * S, rng() * S)
+    ctx.strokeStyle = `rgba(175,150,100,${0.12 + rng() * 0.16})`
+    ctx.lineWidth = 0.2 + rng() * 0.6
+    ctx.stroke()
+  }
+  return cvs
+}
+
+function makeFloorMat(rx = 4, rz = 4) {
+  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xddd5bc })
+  const tex = new THREE.CanvasTexture(makeMarbleTex(++_mSeed))
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(rx / 3, rz / 3)   // ~3-unit slabs — large gallery marble
+  return new THREE.MeshLambertMaterial({ map: tex })
 }
 
 // Gold crown molding + baseboard strip along a wall face
@@ -54,7 +104,7 @@ export function buildLobby(scene, kidNames, kidColors) {
   const cx = 0, cz = LOBBY_D / 2
 
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat())
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat(LOBBY_W, LOBBY_D))
   floor.position.set(cx, -0.05, cz)
   floor.userData.notOccludable = true
   scene.add(floor)
@@ -171,7 +221,7 @@ export function buildLobby(scene, kidNames, kidColors) {
 
 function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat())
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat(ROOM_W, ROOM_D))
   floor.position.set(cx, -0.05, cz)
   floor.userData.notOccludable = true
   scene.add(floor)
@@ -282,7 +332,7 @@ export function buildWings(scene, manifest) {
   const fullSpan = LOBBY_W + ROOM_W  // =20, covers x=-10..+10 with some extra
 
   // Floor bridge covering the gap between lobby and wing floors
-  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat())
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat(fullSpan, juncDepth + 0.2))
   bFloor.position.set(0, -0.05, juncZ)
   bFloor.receiveShadow = true
   bFloor.userData.notOccludable = true
