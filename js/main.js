@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { initScene, startLoop } from './scene.js'
-import { buildLobby, buildWings, wallMat } from './rooms.js'
+import { buildLobby, buildWings } from './rooms.js'
 import { loadCharacter, updateCharacter, updateCamera } from './character.js'
 import { loadArtworks, checkProximity, hideFullscreen, isFullscreen } from './artwork.js'
 import { isMobile, createMobileControls } from './mobile.js'
@@ -15,14 +15,15 @@ const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
 const artworks = loadArtworks(manifest, allSlots, scene)
 
-// Per-mesh wall materials — needed so each wall can be made transparent independently
-// when it blocks the camera from the character's position
-const wallMeshes = []
+// Clone every occludable mesh's material so it can be made transparent independently.
+// Floor and ceiling are excluded (notOccludable flag); character meshes are loaded later
+// so they are never in this list.
+const occludables = []
 scene.traverse(obj => {
-  if (obj.isMesh && obj.material === wallMat) {
+  if (obj.isMesh && !obj.userData.notOccludable) {
     obj.material = obj.material.clone()
     obj.userData.hidden = false
-    wallMeshes.push(obj)
+    occludables.push(obj)
   }
 })
 const camRaycaster = new THREE.Raycaster()
@@ -34,8 +35,8 @@ function updateOcclusion(camera, charPos) {
   if (dist < 0.1) return
   camRaycaster.set(eye, toCam.normalize())
   camRaycaster.far = dist
-  const blocked = new Set(camRaycaster.intersectObjects(wallMeshes).map(h => h.object))
-  for (const m of wallMeshes) {
+  const blocked = new Set(camRaycaster.intersectObjects(occludables).map(h => h.object))
+  for (const m of occludables) {
     const hide = blocked.has(m)
     if (hide !== m.userData.hidden) {
       m.userData.hidden = hide

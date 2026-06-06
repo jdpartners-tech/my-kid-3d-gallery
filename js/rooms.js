@@ -21,20 +21,9 @@ const MATS = {
     : new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.5, roughness: 0.3 }),
 }
 
-// Marble checkerboard canvas texture — one per floor mesh so repeat matches room size
-function makeFloorMat(rx, rz) {
-  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0x0e0c0a })
-  const cvs = document.createElement('canvas')
-  cvs.width = 256; cvs.height = 256
-  const ctx2 = cvs.getContext('2d')
-  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
-    ctx2.fillStyle = (r + c) % 2 === 0 ? '#ddd6c6' : '#111008'
-    ctx2.fillRect(c * 32, r * 32, 32, 32)
-  }
-  const tex = new THREE.CanvasTexture(cvs)
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(rx / 2, rz / 2)
-  return new THREE.MeshLambertMaterial({ map: tex })
+// Solid polished dark floor — rich warm ebony, no pattern to cause visual fatigue
+function makeFloorMat() {
+  return new THREE.MeshLambertMaterial({ color: 0x1e1a14 })
 }
 
 // Gold crown molding + baseboard strip along a wall face
@@ -65,13 +54,15 @@ export function buildLobby(scene, kidNames, kidColors) {
   const cx = 0, cz = LOBBY_D / 2
 
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat(LOBBY_W, LOBBY_D))
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat())
   floor.position.set(cx, -0.05, cz)
+  floor.userData.notOccludable = true
   scene.add(floor)
 
   // Ceiling
   const ceil = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.ceiling)
   ceil.position.set(cx, ROOM_H, cz)
+  ceil.userData.notOccludable = true
   scene.add(ceil)
 
   // Two ceiling pendants — front and back of lobby for glamorous even fill
@@ -180,13 +171,15 @@ export function buildLobby(scene, kidNames, kidColors) {
 
 function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat(ROOM_W, ROOM_D))
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat())
   floor.position.set(cx, -0.05, cz)
+  floor.userData.notOccludable = true
   scene.add(floor)
 
   // Ceiling
   const ceil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.ceiling)
   ceil.position.set(cx, ROOM_H, cz)
+  ceil.userData.notOccludable = true
   scene.add(ceil)
 
   // Two ceiling pendants — front and back half of room for bright even fill
@@ -289,14 +282,16 @@ export function buildWings(scene, manifest) {
   const fullSpan = LOBBY_W + ROOM_W  // =20, covers x=-10..+10 with some extra
 
   // Floor bridge covering the gap between lobby and wing floors
-  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat(fullSpan, juncDepth + 0.2))
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat())
   bFloor.position.set(0, -0.05, juncZ)
   bFloor.receiveShadow = true
+  bFloor.userData.notOccludable = true
   scene.add(bFloor)
 
   // Ceiling bridge
   const bCeil = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), MATS.ceiling)
   bCeil.position.set(0, ROOM_H, juncZ)
+  bCeil.userData.notOccludable = true
   scene.add(bCeil)
 
   // Back wall of junction (blocks the void between the two wings)

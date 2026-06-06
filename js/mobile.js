@@ -1,5 +1,8 @@
+export const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+  ('ontouchstart' in window)
+
 export function isMobile() {
-  return window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+  return IS_MOBILE
 }
 
 export function createMobileControls() {
@@ -79,8 +82,9 @@ export function createMobileControls() {
       return {
         forward:  state.y < -0.3,
         backward: state.y >  0.3,
-        left:     state.x < -0.3,
-        right:    state.x >  0.3,
+        left:     state.x < -0.55,   // higher threshold — need a deliberate sideways push
+        right:    state.x >  0.55,
+        xAxis:    state.x,           // analog value for proportional turning
       }
     },
     getCameraDx() {
