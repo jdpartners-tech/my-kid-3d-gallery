@@ -1,20 +1,29 @@
 import * as THREE from 'three'
+import { IS_MOBILE } from './mobile.js'
 
 const ROOM_W = 8, ROOM_D = 12, ROOM_H = 3.5
 const LOBBY_W = 12, LOBBY_D = 10
 const DOOR_W = 2.0, DOOR_H = 2.6
 const ARTWORK_Y = 1.5
 const ARTWORK_Z_OFFSETS = [-3.5, 0, 3.5]
+const JUNC_DEPTH = 1.4
+const JUNC_END_Z = LOBBY_D + JUNC_DEPTH  // z=11.4 — where junction ends and wing walls begin
 
+// Lambert is cheaper than Standard (no PBR) — walls don't need metalness
 const MATS = {
-  wall:    new THREE.MeshStandardMaterial({ color: 0xf0ece0 }),
-  floor:   new THREE.MeshStandardMaterial({ color: 0x282828, roughness: 0.9 }),
-  ceiling: new THREE.MeshStandardMaterial({ color: 0xe8e4d8, roughness: 1 }),
-  frame:   new THREE.MeshStandardMaterial({ color: 0xb8960a, metalness: 0.4, roughness: 0.5 }),
-  trim:    new THREE.MeshStandardMaterial({ color: 0x806000, metalness: 0.3 }),
+  wall:    new THREE.MeshLambertMaterial({ color: 0xf0ece0 }),
+  floor:   new THREE.MeshLambertMaterial({ color: 0x282828 }),
+  ceiling: new THREE.MeshLambertMaterial({ color: 0xe8e4d8 }),
+  frame:   IS_MOBILE
+    ? new THREE.MeshLambertMaterial({ color: 0xb8960a })
+    : new THREE.MeshStandardMaterial({ color: 0xb8960a, metalness: 0.4, roughness: 0.5 }),
+  trim:    IS_MOBILE
+    ? new THREE.MeshLambertMaterial({ color: 0x806000 })
+    : new THREE.MeshStandardMaterial({ color: 0x806000, metalness: 0.3 }),
 }
 
 function addSpotlight(scene, x, y, z, targetX, targetZ) {
+  if (IS_MOBILE) return  // spotlights are the #1 mobile perf killer — skip entirely
   const light = new THREE.SpotLight(0xfff5e0, 2.5, 8, Math.PI / 6, 0.4)
   light.position.set(x, y, z)
   light.castShadow = false
@@ -134,7 +143,7 @@ export function buildLobby(scene, kidNames, kidColors) {
   }
 }
 
-function buildRoom(scene, cx, cz, openSouth = false) {
+function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
   // Floor
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.floor)
   floor.position.set(cx, -0.05, cz)
@@ -150,15 +159,25 @@ function buildRoom(scene, cx, cz, openSouth = false) {
   light.position.set(cx, ROOM_H - 0.3, cz)
   scene.add(light)
 
-  // Left wall
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
-  leftWall.position.set(cx - ROOM_W / 2, ROOM_H / 2, cz)
-  scene.add(leftWall)
+  // Left wall — trimmed for right wing room 0 (inner wall faces the junction corridor)
+  const leftShorten = openInnerSouth && cx > 0
+  const leftWallLen = leftShorten ? (cz + ROOM_D / 2) - JUNC_END_Z : ROOM_D
+  const leftWallCz  = leftShorten ? (JUNC_END_Z + cz + ROOM_D / 2) / 2 : cz
+  if (leftWallLen > 0) {
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, leftWallLen), MATS.wall)
+    leftWall.position.set(cx - ROOM_W / 2, ROOM_H / 2, leftWallCz)
+    scene.add(leftWall)
+  }
 
-  // Right wall
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
-  rightWall.position.set(cx + ROOM_W / 2, ROOM_H / 2, cz)
-  scene.add(rightWall)
+  // Right wall — trimmed for left wing room 0 (inner wall faces the junction corridor)
+  const rightShorten = openInnerSouth && cx < 0
+  const rightWallLen = rightShorten ? (cz + ROOM_D / 2) - JUNC_END_Z : ROOM_D
+  const rightWallCz  = rightShorten ? (JUNC_END_Z + cz + ROOM_D / 2) / 2 : cz
+  if (rightWallLen > 0) {
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, rightWallLen), MATS.wall)
+    rightWall.position.set(cx + ROOM_W / 2, ROOM_H / 2, rightWallCz)
+    scene.add(rightWall)
+  }
 
   // Back wall (south) — omitted for first room so player can enter from the junction corridor
   if (!openSouth) {
@@ -256,7 +275,10 @@ export function buildWings(scene, manifest) {
 
     for (let r = 0; r < roomCount; r++) {
       const cz = LOBBY_D + ROOM_D / 2 + r * ROOM_D
-      const { slots, bounds } = buildRoom(scene, wingX, cz, r === 0)
+      // Always omit south wall: room 0's south is open to the corridor;
+      // rooms r>0 south is already handled by room r-1's north door wall.
+      // For room 0, trim the inner side wall so the junction corridor is open.
+      const { slots, bounds } = buildRoom(scene, wingX, cz, true, r === 0)
 
       slots.forEach((slot, s) => {
         const artIdx = r * 6 + s
@@ -266,6 +288,16 @@ export function buildWings(scene, manifest) {
       })
 
       allBounds.push(bounds)
+
+      // Bridge the 0.4-unit bound gap at the north door between consecutive rooms
+      if (r < roomCount - 1) {
+        allBounds.push({
+          xMin: wingX - DOOR_W / 2,
+          xMax: wingX + DOOR_W / 2,
+          zMin: cz + ROOM_D / 2 - 0.35,
+          zMax: cz + ROOM_D / 2 + 0.35
+        })
+      }
     }
   })
 
