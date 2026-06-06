@@ -1,5 +1,6 @@
+import * as THREE from 'three'
 import { initScene, startLoop } from './scene.js'
-import { buildLobby, buildWings } from './rooms.js'
+import { buildLobby, buildWings, wallMat } from './rooms.js'
 import { loadCharacter, updateCharacter, updateCamera } from './character.js'
 import { loadArtworks, checkProximity, hideFullscreen, isFullscreen } from './artwork.js'
 import { isMobile, createMobileControls } from './mobile.js'
@@ -13,6 +14,38 @@ const kidColors = manifest.kids.map(k => k.color)
 const lobby = buildLobby(scene, kidNames, kidColors)
 const { allSlots, allBounds } = buildWings(scene, manifest)
 const artworks = loadArtworks(manifest, allSlots, scene)
+
+// Per-mesh wall materials — needed so each wall can be made transparent independently
+// when it blocks the camera from the character's position
+const wallMeshes = []
+scene.traverse(obj => {
+  if (obj.isMesh && obj.material === wallMat) {
+    obj.material = obj.material.clone()
+    obj.userData.hidden = false
+    wallMeshes.push(obj)
+  }
+})
+const camRaycaster = new THREE.Raycaster()
+
+function updateOcclusion(camera, charPos) {
+  const eye = new THREE.Vector3(charPos.x, charPos.y + 1.5, charPos.z)
+  const toCam = camera.position.clone().sub(eye)
+  const dist = toCam.length()
+  if (dist < 0.1) return
+  camRaycaster.set(eye, toCam.normalize())
+  camRaycaster.far = dist
+  const blocked = new Set(camRaycaster.intersectObjects(wallMeshes).map(h => h.object))
+  for (const m of wallMeshes) {
+    const hide = blocked.has(m)
+    if (hide !== m.userData.hidden) {
+      m.userData.hidden = hide
+      m.material.transparent = hide
+      m.material.opacity = hide ? 0.0 : 1.0
+      m.material.depthWrite = !hide
+      m.material.needsUpdate = true
+    }
+  }
+}
 
 // Keyboard state
 const keys = {}
@@ -61,7 +94,8 @@ startLoop(renderer, scene, camera, (delta) => {
 
   if (char && !isFullscreen()) {
     updateCharacter(char, delta, input, allRoomBounds)
-    updateCamera(camera, char, input)
+    updateCamera(camera, char, delta, input)
+    updateOcclusion(camera, char.mesh.position)
   }
 
   checkProximity(artworks, char ? char.mesh.position : camera.position)

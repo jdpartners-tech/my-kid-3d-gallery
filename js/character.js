@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 const SPEED = 4.0
 const CHAR_RADIUS = 0.35
+const Z_RADIUS = 0.15  // smaller — lets player through narrow door/passage transitions
 const CAM_OFFSET = new THREE.Vector3(0, 2.5, 4)
 
 export async function loadCharacter(scene) {
@@ -69,9 +70,12 @@ export function updateCharacter(char, delta, input, allBounds) {
 
   const next = char.mesh.position.clone().addScaledVector(dir, SPEED * delta)
 
+  // Spacious bounds get Z radius; narrow passage/door bounds need full depth
+  const zr = b => (b.zMax - b.zMin) >= 0.9 ? Z_RADIUS : 0
+
   const inBound = b =>
     next.x >= b.xMin + CHAR_RADIUS && next.x <= b.xMax - CHAR_RADIUS &&
-    next.z >= b.zMin && next.z <= b.zMax
+    next.z >= b.zMin + zr(b) && next.z <= b.zMax - zr(b)
 
   const inBounds = allBounds.find(inBound)
 
@@ -83,10 +87,10 @@ export function updateCharacter(char, delta, input, allBounds) {
     const tryZ = char.mesh.position.clone(); tryZ.z = next.z
     const canX = allBounds.find(b =>
       tryX.x >= b.xMin + CHAR_RADIUS && tryX.x <= b.xMax - CHAR_RADIUS &&
-      tryX.z >= b.zMin && tryX.z <= b.zMax)
+      tryX.z >= b.zMin + zr(b) && tryX.z <= b.zMax - zr(b))
     const canZ = allBounds.find(b =>
       tryZ.x >= b.xMin + CHAR_RADIUS && tryZ.x <= b.xMax - CHAR_RADIUS &&
-      tryZ.z >= b.zMin && tryZ.z <= b.zMax)
+      tryZ.z >= b.zMin + zr(b) && tryZ.z <= b.zMax - zr(b))
     if (canX) char.mesh.position.x = next.x
     if (canZ) char.mesh.position.z = next.z
   }

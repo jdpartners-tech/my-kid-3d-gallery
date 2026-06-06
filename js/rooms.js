@@ -59,6 +59,8 @@ function addSpotlight(scene, x, y, z, targetX, targetZ) {
   scene.add(light)
 }
 
+export const wallMat = MATS.wall  // exported so main.js can identify wall meshes for occlusion
+
 export function buildLobby(scene, kidNames, kidColors) {
   const cx = 0, cz = LOBBY_D / 2
 
