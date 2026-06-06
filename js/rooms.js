@@ -11,20 +11,45 @@ const JUNC_END_Z = LOBBY_D + JUNC_DEPTH  // z=11.4 — where junction ends and w
 
 // Lambert is cheaper than Standard (no PBR) — walls don't need metalness
 const MATS = {
-  wall:    new THREE.MeshLambertMaterial({ color: 0xf0ece0 }),
-  floor:   new THREE.MeshLambertMaterial({ color: 0x282828 }),
-  ceiling: new THREE.MeshLambertMaterial({ color: 0xe8e4d8 }),
+  wall:    new THREE.MeshLambertMaterial({ color: 0x1b2d1e }),   // deep gallery green
+  ceiling: new THREE.MeshLambertMaterial({ color: 0xede8dc }),   // warm ivory
   frame:   IS_MOBILE
-    ? new THREE.MeshLambertMaterial({ color: 0xb8960a })
-    : new THREE.MeshStandardMaterial({ color: 0xb8960a, metalness: 0.4, roughness: 0.5 }),
+    ? new THREE.MeshLambertMaterial({ color: 0xc8a820 })
+    : new THREE.MeshStandardMaterial({ color: 0xc8a820, metalness: 0.6, roughness: 0.3 }),
   trim:    IS_MOBILE
-    ? new THREE.MeshLambertMaterial({ color: 0x806000 })
-    : new THREE.MeshStandardMaterial({ color: 0x806000, metalness: 0.3 }),
+    ? new THREE.MeshLambertMaterial({ color: 0xd4af37 })
+    : new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.5, roughness: 0.3 }),
+}
+
+// Marble checkerboard canvas texture — one per floor mesh so repeat matches room size
+function makeFloorMat(rx, rz) {
+  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0x0e0c0a })
+  const cvs = document.createElement('canvas')
+  cvs.width = 256; cvs.height = 256
+  const ctx2 = cvs.getContext('2d')
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    ctx2.fillStyle = (r + c) % 2 === 0 ? '#ccc4b4' : '#0e0c0a'
+    ctx2.fillRect(c * 32, r * 32, 32, 32)
+  }
+  const tex = new THREE.CanvasTexture(cvs)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(rx / 2, rz / 2)
+  return new THREE.MeshLambertMaterial({ map: tex })
+}
+
+// Gold crown molding + baseboard strip along a wall face
+function addHorzTrim(scene, cx, cz, w, d) {
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), MATS.trim)
+  crown.position.set(cx, ROOM_H - 0.06, cz)
+  scene.add(crown)
+  const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, d), MATS.trim)
+  base.position.set(cx, 0.07, cz)
+  scene.add(base)
 }
 
 function addSpotlight(scene, x, y, z, targetX, targetZ) {
   if (IS_MOBILE) return  // spotlights are the #1 mobile perf killer — skip entirely
-  const light = new THREE.SpotLight(0xfff5e0, 2.5, 8, Math.PI / 6, 0.4)
+  const light = new THREE.SpotLight(0xffe8c0, 3.2, 8, Math.PI / 6, 0.35)
   light.position.set(x, y, z)
   light.castShadow = false
   const target = new THREE.Object3D()
@@ -38,7 +63,7 @@ export function buildLobby(scene, kidNames, kidColors) {
   const cx = 0, cz = LOBBY_D / 2
 
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.floor)
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat(LOBBY_W, LOBBY_D))
   floor.position.set(cx, -0.05, cz)
   scene.add(floor)
 
@@ -47,8 +72,8 @@ export function buildLobby(scene, kidNames, kidColors) {
   ceil.position.set(cx, ROOM_H, cz)
   scene.add(ceil)
 
-  // Ceiling light
-  const lobbyLight = new THREE.PointLight(0xfff5e0, 1.5, 14)
+  // Ceiling lights — two warm pendants for a grand lobby feel
+  const lobbyLight = new THREE.PointLight(0xffe8c0, 2.0, 16)
   lobbyLight.position.set(cx, ROOM_H - 0.3, cz)
   scene.add(lobbyLight)
 
@@ -67,6 +92,11 @@ export function buildLobby(scene, kidNames, kidColors) {
   const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, LOBBY_D), MATS.wall)
   rightWall.position.set(cx + LOBBY_W / 2 - 0.075, ROOM_H / 2, cz)
   scene.add(rightWall)
+
+  // Gold crown molding + baseboard on lobby walls
+  addHorzTrim(scene, cx, 0.19, LOBBY_W, 0.09)                          // south wall
+  addHorzTrim(scene, cx - LOBBY_W / 2 + 0.10, cz, 0.09, LOBBY_D)      // left wall
+  addHorzTrim(scene, cx + LOBBY_W / 2 - 0.10, cz, 0.09, LOBBY_D)      // right wall
 
   // North wall — two door openings: left door centred at X=-2.5, right at X=+2.5
   const northZ = cz + LOBBY_D / 2
@@ -145,7 +175,7 @@ export function buildLobby(scene, kidNames, kidColors) {
 
 function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
   // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.floor)
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat(ROOM_W, ROOM_D))
   floor.position.set(cx, -0.05, cz)
   scene.add(floor)
 
@@ -155,7 +185,7 @@ function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
   scene.add(ceil)
 
   // Ceiling light
-  const light = new THREE.PointLight(0xfff5e0, 1.2, 12)
+  const light = new THREE.PointLight(0xffe8c0, 1.5, 14)
   light.position.set(cx, ROOM_H - 0.3, cz)
   scene.add(light)
 
@@ -179,11 +209,16 @@ function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
     scene.add(rightWall)
   }
 
+  // Gold crown molding + baseboard along side walls
+  addHorzTrim(scene, cx - ROOM_W / 2 + 0.10, leftShorten ? leftWallCz : cz,  0.09, leftWallLen  > 0 ? leftWallLen  : ROOM_D)
+  addHorzTrim(scene, cx + ROOM_W / 2 - 0.10, rightShorten ? rightWallCz : cz, 0.09, rightWallLen > 0 ? rightWallLen : ROOM_D)
+
   // Back wall (south) — omitted for first room so player can enter from the junction corridor
   if (!openSouth) {
     const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
     backWall.position.set(cx, ROOM_H / 2, cz - ROOM_D / 2)
     scene.add(backWall)
+    addHorzTrim(scene, cx, cz - ROOM_D / 2 + 0.10, ROOM_W, 0.09)
   }
 
   // Front wall (north) — with door opening to next room
@@ -235,7 +270,7 @@ export function buildWings(scene, manifest) {
   const fullSpan = LOBBY_W + ROOM_W  // =20, covers x=-10..+10 with some extra
 
   // Floor bridge covering the gap between lobby and wing floors
-  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), MATS.floor)
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat(fullSpan, juncDepth + 0.2))
   bFloor.position.set(0, -0.05, juncZ)
   bFloor.receiveShadow = true
   scene.add(bFloor)
@@ -251,7 +286,7 @@ export function buildWings(scene, manifest) {
   scene.add(bBack)
 
   // Dim light in junction
-  const jLight = new THREE.PointLight(0xfff5e0, 0.6, 14)
+  const jLight = new THREE.PointLight(0xffe8c0, 0.8, 16)
   jLight.position.set(0, ROOM_H - 0.3, juncZ)
   scene.add(jLight)
 

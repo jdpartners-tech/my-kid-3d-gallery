@@ -1,8 +1,12 @@
 import * as THREE from 'three'
+import { IS_MOBILE } from './mobile.js'
 
 const FRAME_W = 1.4, FRAME_H = 1.8, FRAME_THICK = 0.04, FRAME_BORDER = 0.06
-const FRAME_MAT = new THREE.MeshStandardMaterial({ color: 0xb8960a, metalness: 0.4, roughness: 0.5 })
-const BLANK_MAT  = new THREE.MeshStandardMaterial({ color: 0xf5f0e8 })
+const FRAME_MAT = IS_MOBILE
+  ? new THREE.MeshLambertMaterial({ color: 0xc8a820 })
+  : new THREE.MeshStandardMaterial({ color: 0xc8a820, metalness: 0.6, roughness: 0.3 })
+// BasicMaterial: unlit — paintings show at full brightness, no spotlight needed
+const BLANK_MAT = new THREE.MeshBasicMaterial({ color: 0xf5f0e8 })
 
 const PROXIMITY_THRESHOLD = 2.0
 const HYSTERESIS = 0.5
@@ -34,7 +38,7 @@ export function loadArtworks(manifest, allSlots, scene) {
 
       frameGroup.position.copy(slot.position)
       frameGroup.position.x += slot.normalX * (FRAME_THICK / 2 + 0.02)
-      frameGroup.rotation.y = -slot.normalX * Math.PI / 2
+      frameGroup.rotation.y = slot.normalX * Math.PI / 2
 
       scene.add(frameGroup)
 
@@ -51,6 +55,10 @@ export function loadArtworks(manifest, allSlots, scene) {
         artworkData.file,
         tex => {
           tex.colorSpace = THREE.SRGBColorSpace
+          if (IS_MOBILE) {
+            tex.generateMipmaps = false
+            tex.minFilter = THREE.LinearFilter
+          }
           canvasMat.map = tex
           canvasMat.color.set(0xffffff)
           canvasMat.needsUpdate = true
