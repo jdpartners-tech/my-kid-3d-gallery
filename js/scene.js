@@ -11,15 +11,15 @@ export function initScene() {
   renderer.shadowMap.enabled = false
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x080806)
-  scene.fog = new THREE.Fog(0x080806, IS_MOBILE ? 14 : 20, IS_MOBILE ? 30 : 45)
+  scene.background = new THREE.Color(0x1a1510)
+  scene.fog = new THREE.Fog(0x1a1510, IS_MOBILE ? 18 : 28, IS_MOBILE ? 42 : 65)
 
   const far = IS_MOBILE ? 35 : 100
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, far)
   camera.position.set(0, 3, -5)
 
   // Higher ambient on mobile compensates for no spotlights
-  scene.add(new THREE.AmbientLight(0xfff8ee, IS_MOBILE ? 0.8 : 0.35))
+  scene.add(new THREE.AmbientLight(0xfff8ee, IS_MOBILE ? 1.2 : 0.7))
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight
