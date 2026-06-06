@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 const SPEED = 4.0
+const CHAR_RADIUS = 0.35
 const CAM_OFFSET = new THREE.Vector3(0, 2.5, 4)
 
 export async function loadCharacter(scene) {
@@ -68,10 +69,11 @@ export function updateCharacter(char, delta, input, allBounds) {
 
   const next = char.mesh.position.clone().addScaledVector(dir, SPEED * delta)
 
-  const inBounds = allBounds.find(b =>
-    next.x >= b.xMin && next.x <= b.xMax &&
+  const inBound = b =>
+    next.x >= b.xMin + CHAR_RADIUS && next.x <= b.xMax - CHAR_RADIUS &&
     next.z >= b.zMin && next.z <= b.zMax
-  )
+
+  const inBounds = allBounds.find(inBound)
 
   if (inBounds || allBounds.length === 0) {
     char.mesh.position.copy(next)
@@ -79,16 +81,24 @@ export function updateCharacter(char, delta, input, allBounds) {
     // Wall sliding
     const tryX = char.mesh.position.clone(); tryX.x = next.x
     const tryZ = char.mesh.position.clone(); tryZ.z = next.z
-    const canX = allBounds.find(b => tryX.x >= b.xMin && tryX.x <= b.xMax && tryX.z >= b.zMin && tryX.z <= b.zMax)
-    const canZ = allBounds.find(b => tryZ.x >= b.xMin && tryZ.x <= b.xMax && tryZ.z >= b.zMin && tryZ.z <= b.zMax)
+    const canX = allBounds.find(b =>
+      tryX.x >= b.xMin + CHAR_RADIUS && tryX.x <= b.xMax - CHAR_RADIUS &&
+      tryX.z >= b.zMin && tryX.z <= b.zMax)
+    const canZ = allBounds.find(b =>
+      tryZ.x >= b.xMin + CHAR_RADIUS && tryZ.x <= b.xMax - CHAR_RADIUS &&
+      tryZ.z >= b.zMin && tryZ.z <= b.zMax)
     if (canX) char.mesh.position.x = next.x
     if (canZ) char.mesh.position.z = next.z
   }
 }
 
-export function updateCamera(camera, char, input) {
-  char._yaw += (input.dx || 0) * 0.005
-  input.dx = 0
+export function updateCamera(camera, char, delta, input) {
+  // Auto-follow: smoothly swing camera behind the character's current facing direction
+  let diff = char.mesh.rotation.y - char._yaw
+  while (diff >  Math.PI) diff -= 2 * Math.PI
+  while (diff < -Math.PI) diff += 2 * Math.PI
+  char._yaw += diff * Math.min(1, delta * 3)
+  input.dx = 0  // manual drag no longer used
 
   const offset = CAM_OFFSET.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), char._yaw)
   camera.position.copy(char.mesh.position).add(offset)
