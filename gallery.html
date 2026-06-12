@@ -1,9 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow" />
   <title>My Kid 3D Gallery</title>
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="KK Gallery">
+  <link rel="manifest" href="site.webmanifest">
   <script type="importmap">
   {
     "imports": {
@@ -24,9 +30,17 @@
     #fullscreen-overlay {
       position: fixed; inset: 0; background: #000;
       display: none; align-items: center; justify-content: center;
-      flex-direction: column;
+      flex-direction: column; cursor: pointer;
     }
     #fullscreen-overlay.active { display: flex; }
+    #fullscreen-close {
+      position: fixed; top: 20px; right: 24px;
+      color: rgba(255,255,255,0.7); font-size: 2rem; font-weight: bold;
+      cursor: pointer; line-height: 1; user-select: none;
+      background: rgba(0,0,0,0.4); border-radius: 50%;
+      width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    }
+    #fullscreen-close:hover { color: #fff; background: rgba(200,168,32,0.6); }
     #fullscreen-img {
       max-width: 90vw; max-height: 80vh; object-fit: contain;
       border: 3px solid #c8a940; box-shadow: 0 0 40px rgba(0,0,0,0.9);
@@ -39,15 +53,197 @@
       position: fixed; bottom: 16px; right: 16px;
       color: rgba(255,255,255,0.3); font-family: monospace; font-size: 11px;
     }
+    #loader {
+      position: fixed; inset: 0; z-index: 100;
+      background: #0a0a0a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 24px;
+      transition: opacity 0.8s ease;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loader-ring {
+      width: 64px; height: 64px;
+      border: 4px solid rgba(200, 168, 32, 0.2);
+      border-top-color: #c8a820;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      will-change: transform;
+    }
+    #loader-text {
+      color: rgba(200, 168, 32, 0.85);
+      font-family: Georgia, serif; font-size: 1rem;
+      letter-spacing: 0.12em;
+    }
+    #loader-sub {
+      color: rgba(255,255,255,0.25);
+      font-family: monospace; font-size: 0.75rem;
+      letter-spacing: 0.08em;
+    }
+
+    /* ── Character select ─────────────────────────────────────────── */
+    #char-select {
+      position: fixed; inset: 0; z-index: 200;
+      background: #0a0a0a; display: flex; flex-direction: column;
+      font-family: Georgia, serif;
+    }
+    #cs-header {
+      padding: 24px 36px 16px; flex-shrink: 0;
+      border-bottom: 1px solid rgba(200,168,32,0.2);
+    }
+    #cs-title { color: #c8a820; font-size: 1.5rem; letter-spacing: 0.1em; }
+    #cs-sub {
+      color: rgba(255,255,255,0.35); font-size: 0.78rem; margin-top: 5px;
+      font-family: monospace; letter-spacing: 0.06em;
+    }
+    #cs-body { flex: 1; display: flex; overflow: hidden; }
+    #cs-grid {
+      flex: 1; overflow-y: auto; padding: 14px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 8px; align-content: start;
+    }
+    .cs-card {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px; padding: 8px; text-align: center;
+      color: rgba(255,255,255,0.65); font-size: 0.78rem; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      font-family: monospace; letter-spacing: 0.03em; user-select: none;
+      height: 52px; display: flex; align-items: center; justify-content: center;
+    }
+    .cs-card:hover {
+      background: rgba(200,168,32,0.1); border-color: rgba(200,168,32,0.4); color: #fff;
+    }
+    .cs-card.selected {
+      background: rgba(200,168,32,0.2); border-color: #c8a820; color: #c8a820; font-weight: bold;
+    }
+    #cs-preview-wrap {
+      width: 300px; flex-shrink: 0; background: #111;
+      border-left: 1px solid rgba(200,168,32,0.15);
+      display: flex; flex-direction: column; align-items: center; padding: 20px 16px;
+    }
+    #cs-canvas { width: 260px; height: 320px; border-radius: 8px; display: block; }
+    #cs-name-display {
+      color: rgba(255,255,255,0.55); font-family: monospace; font-size: 0.85rem;
+      margin-top: 14px; letter-spacing: 0.08em; min-height: 1.2em; text-align: center;
+    }
+    #cs-footer {
+      padding: 18px 36px; flex-shrink: 0;
+      border-top: 1px solid rgba(200,168,32,0.2);
+      display: flex; justify-content: flex-end; align-items: center;
+    }
+    #cs-enter {
+      background: #c8a820; color: #1a1200; border: none; border-radius: 24px;
+      padding: 12px 40px; font-family: monospace; font-size: 0.9rem; font-weight: bold;
+      letter-spacing: 0.1em; cursor: pointer; transition: background 0.15s;
+    }
+    #cs-enter:hover { background: #e0c030; }
+    #cs-artset {
+      background: transparent; color: rgba(255,255,255,0.45);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 24px;
+      padding: 12px 24px; font-family: monospace; font-size: 0.85rem;
+      letter-spacing: 0.08em; cursor: pointer; transition: all 0.15s;
+      margin-right: auto;
+    }
+    #cs-artset:hover { color: #c8a820; border-color: rgba(200,168,32,0.5); }
+
+    /* ── Artwork settings overlay ─────────────────────────────────────── */
+    #art-settings {
+      position: fixed; inset: 0; z-index: 300;
+      background: #0a0a0a; display: flex; flex-direction: column;
+      font-family: Georgia, serif;
+    }
+    #as-header {
+      padding: 20px 36px 14px; flex-shrink: 0;
+      border-bottom: 1px solid rgba(200,168,32,0.2);
+    }
+    #as-title { color: #c8a820; font-size: 1.4rem; letter-spacing: 0.1em; }
+    #as-sub {
+      color: rgba(255,255,255,0.35); font-size: 0.75rem; margin-top: 4px;
+      font-family: monospace; letter-spacing: 0.06em;
+    }
+    #as-body { flex: 1; overflow-y: auto; padding: 8px 36px 24px; }
+    .as-section-title {
+      font-size: 0.95rem; letter-spacing: 0.08em;
+      margin: 22px 0 8px; font-family: monospace;
+    }
+    .as-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .as-thumb-wrap {
+      width: 72px; height: 72px; flex-shrink: 0;
+      overflow: hidden; border-radius: 4px; background: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      transition: width 0.25s, height 0.25s;
+    }
+    .as-thumb {
+      width: 68px; height: 68px; object-fit: cover;
+      transition: transform 0.3s, width 0.25s, height 0.25s;
+    }
+    .as-num {
+      width: 36px; flex-shrink: 0;
+      color: rgba(255,255,255,0.45); font-family: monospace; font-size: 0.8rem;
+    }
+    .as-rot-btn {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 6px; color: #fff; font-size: 1.3rem; cursor: pointer;
+      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.15s;
+    }
+    .as-rot-btn:hover { background: rgba(200,168,32,0.2); border-color: rgba(200,168,32,0.5); }
+    .as-orient {
+      flex: 1; font-family: monospace; font-size: 0.78rem;
+      letter-spacing: 0.04em; text-align: center;
+    }
+    .as-orient.landscape { color: #c8a820; }
+    .as-orient.portrait  { color: rgba(255,255,255,0.35); }
+    #as-footer {
+      padding: 16px 36px; flex-shrink: 0;
+      border-top: 1px solid rgba(200,168,32,0.2);
+      display: flex; justify-content: flex-end;
+    }
+    #as-done {
+      background: #c8a820; color: #1a1200; border: none; border-radius: 24px;
+      padding: 11px 40px; font-family: monospace; font-size: 0.9rem; font-weight: bold;
+      letter-spacing: 0.1em; cursor: pointer; transition: background 0.15s;
+    }
+    #as-done:hover { background: #e0c030; }
+
+    @media (max-width: 600px) {
+      #cs-body { flex-direction: column; }
+      #cs-preview-wrap {
+        width: 100%; border-left: none; border-top: 1px solid rgba(200,168,32,0.15);
+        flex-direction: row; padding: 12px 16px; gap: 12px; align-items: center;
+      }
+      #cs-canvas { width: 120px; height: 150px; flex-shrink: 0; }
+      #cs-name-display { margin-top: 0; }
+    }
   </style>
 </head>
 <body>
-  <div id="hud">WASD to walk &nbsp;|&nbsp; Mouse drag to look<br>Walk close to artwork to view</div>
-  <div id="fullscreen-overlay">
-    <img id="fullscreen-img" src="" alt="">
-    <div id="fullscreen-meta"></div>
+  <div id="loader">
+    <div id="loader-ring"></div>
+    <div id="loader-text">Loading Gallery</div>
+    <div id="loader-sub">Preparing the exhibition…</div>
   </div>
-  <div id="fullscreen-hint">ESC or back away to exit</div>
-  <script type="module" src="js/main.js"></script>
+  <div id="hud">WASD to walk &nbsp;|&nbsp; Mouse drag to look<br>Walk close to artwork &nbsp;·&nbsp; Space or E to view</div>
+  <div id="view-btn" style="display:none; position:fixed; bottom:110px; left:50%; transform:translateX(-50%); background:rgba(200,168,32,0.9); color:#1a1200; font-family:monospace; font-size:14px; font-weight:bold; padding:12px 28px; border-radius:28px; cursor:pointer; pointer-events:auto; letter-spacing:0.05em; box-shadow:0 4px 16px rgba(0,0,0,0.5);">VIEW ARTWORK</div>
+  <div id="fullscreen-overlay">
+    <div id="fullscreen-close">✕</div>
+    <img id="fullscreen-img" src="" alt="" style="pointer-events:none">
+    <div id="fullscreen-meta" style="pointer-events:none"></div>
+  </div>
+  <div id="fullscreen-hint">Press S / ↓ or tap ✕ to exit</div>
+  <script>
+    // Import maps require iOS 16.4+. Show a friendly message on older devices.
+    if (typeof HTMLScriptElement !== 'undefined' &&
+        (!HTMLScriptElement.supports || !HTMLScriptElement.supports('importmap'))) {
+      document.getElementById('loader-ring').style.animation = 'none'
+      document.getElementById('loader-ring').style.borderTopColor = 'rgba(255,200,80,0.5)'
+      document.getElementById('loader-text').textContent = 'Browser not supported'
+      document.getElementById('loader-sub').textContent = 'Please update iOS to 16.4 or later, then refresh'
+    }
+  </script>
+  <script type="module" src="js/main.js?v=6"></script>
 </body>
 </html>

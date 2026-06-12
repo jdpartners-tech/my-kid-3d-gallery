@@ -5,5 +5,8 @@
   "scripts": {
     "scan": "node scan.js",
     "dev": "npx http-server . -p 3000 -c-1 --cors"
+  },
+  "devDependencies": {
+    "playwright": "^1.60.0"
   }
 }

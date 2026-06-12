@@ -1,400 +1,363 @@
 import * as THREE from 'three'
 import { IS_MOBILE } from './mobile.js'
 
-const ROOM_W = 8, ROOM_D = 12, ROOM_H = 3.5
+const ROOM_W = 8, ROOM_D = 12, ROOM_H = 5.0
 const LOBBY_W = 12, LOBBY_D = 10
-const DOOR_W = 2.0, DOOR_H = 2.6
-const ARTWORK_Y = 1.5
-const ARTWORK_Z_OFFSETS = [-3.5, 0, 3.5]
-const JUNC_DEPTH = 1.4
-const JUNC_END_Z = LOBBY_D + JUNC_DEPTH  // z=11.4 — where junction ends and wing walls begin
+const DOOR_W = 2.4, DOOR_H = 3.6
+const ARTWORK_Y = 2.1
+const ARTWORK_Z_OFFSETS = [-4.8, -2.4, 0, 2.4, 4.8]
+const DADO_Y = 1.8
+const JUNC_DEPTH = 4
+const JUNC_END_Z = LOBBY_D + JUNC_DEPTH
 
-// Lambert is cheaper than Standard (no PBR) — walls don't need metalness
 const MATS = {
-  wall:    new THREE.MeshLambertMaterial({ color: 0x2e5238 }),   // rich emerald green
-  ceiling: new THREE.MeshLambertMaterial({ color: 0xfaf6ee }),   // bright warm ivory
-  frame:   IS_MOBILE
+  wall:     makeWallMat(),
+  ceiling:  new THREE.MeshLambertMaterial({ color: 0xfaf6ee }),
+  skirting: new THREE.MeshLambertMaterial({ color: 0xf2ede5 }),
+  frame:    IS_MOBILE
     ? new THREE.MeshLambertMaterial({ color: 0xc8a820 })
     : new THREE.MeshStandardMaterial({ color: 0xc8a820, metalness: 0.6, roughness: 0.3 }),
-  trim:    IS_MOBILE
+  trim:     IS_MOBILE
     ? new THREE.MeshLambertMaterial({ color: 0xd4af37 })
     : new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.5, roughness: 0.3 }),
 }
 
-// Procedural marble texture — warm Crema Marfil with natural bezier veining
+// ── Marble floor texture ─────────────────────────────────────────────────────
 let _mSeed = 0
 function makeMarbleTex(seed) {
-  const S = 512
-  const cvs = document.createElement('canvas')
-  cvs.width = S; cvs.height = S
+  const S = IS_MOBILE ? 256 : 512
+  const cvs = document.createElement('canvas'); cvs.width = S; cvs.height = S
   const ctx = cvs.getContext('2d')
   let s = (seed * 1664525 + 1013904223) | 0
   const rng = () => { s = (s * 1664525 + 1013904223) | 0; return (s >>> 0) / 4294967296 }
-
-  ctx.fillStyle = '#ece4ce'   // warm ivory base
-  ctx.fillRect(0, 0, S, S)
-
-  // Soft blurred deep veins
-  ctx.save(); ctx.filter = 'blur(5px)'
-  for (let i = 0; i < 6; i++) {
-    ctx.beginPath()
-    ctx.moveTo(rng() * S, rng() * S)
-    ctx.bezierCurveTo(rng() * S, rng() * S, rng() * S, rng() * S, rng() * S, rng() * S)
-    ctx.strokeStyle = `rgba(148,118,72,${0.15 + rng() * 0.2})`
-    ctx.lineWidth = 8 + rng() * 16
-    ctx.stroke()
+  ctx.fillStyle = '#f5f2ee'; ctx.fillRect(0, 0, S, S)
+  for (let i = 0; i < 5; i++) {
+    const x0=rng()*S,y0=rng()*S,cx1=rng()*S,cy1=rng()*S,cx2=rng()*S,cy2=rng()*S,x1=rng()*S,y1=rng()*S
+    for (let w = 14; w >= 1; w -= 2) {
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.bezierCurveTo(cx1,cy1,cx2,cy2,x1,y1)
+      ctx.strokeStyle=`rgba(150,138,120,${0.03*w/14})`; ctx.lineWidth=w; ctx.stroke()
+    }
   }
-  ctx.restore()
-
-  // Mid-weight veins
-  for (let i = 0; i < 10; i++) {
-    ctx.beginPath()
-    ctx.moveTo(rng() * S, rng() * S)
-    ctx.quadraticCurveTo(rng() * S, rng() * S, rng() * S, rng() * S)
-    ctx.strokeStyle = `rgba(140,110,65,${0.2 + rng() * 0.25})`
-    ctx.lineWidth = 0.7 + rng() * 2.5
-    ctx.stroke()
+  for (let i = 0; i < 9; i++) {
+    ctx.beginPath(); ctx.moveTo(rng()*S,rng()*S); ctx.quadraticCurveTo(rng()*S,rng()*S,rng()*S,rng()*S)
+    ctx.strokeStyle=`rgba(140,128,110,${0.22+rng()*0.2})`; ctx.lineWidth=0.5+rng()*2; ctx.stroke()
   }
-
-  // Hairline veins
-  for (let i = 0; i < 16; i++) {
-    ctx.beginPath()
-    ctx.moveTo(rng() * S, rng() * S)
-    ctx.lineTo(rng() * S, rng() * S)
-    ctx.strokeStyle = `rgba(175,150,100,${0.12 + rng() * 0.16})`
-    ctx.lineWidth = 0.2 + rng() * 0.6
-    ctx.stroke()
+  for (let i = 0; i < 14; i++) {
+    ctx.beginPath(); ctx.moveTo(rng()*S,rng()*S); ctx.lineTo(rng()*S,rng()*S)
+    ctx.strokeStyle=`rgba(170,158,138,${0.1+rng()*0.14})`; ctx.lineWidth=0.2+rng()*0.5; ctx.stroke()
   }
   return cvs
 }
-
-function makeFloorMat(rx = 4, rz = 4) {
-  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xddd5bc })
+function makeFloorMat(rx=4, rz=4) {
+  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xf0ece6 })
   const tex = new THREE.CanvasTexture(makeMarbleTex(++_mSeed))
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(rx / 3, rz / 3)   // ~3-unit slabs — large gallery marble
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(rx/3, rz/3)
   return new THREE.MeshLambertMaterial({ map: tex })
 }
 
-// Gold crown molding + baseboard strip along a wall face
-function addHorzTrim(scene, cx, cz, w, d) {
-  const crown = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), MATS.trim)
-  crown.position.set(cx, ROOM_H - 0.06, cz)
-  scene.add(crown)
-  const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.14, d), MATS.trim)
-  base.position.set(cx, 0.07, cz)
-  scene.add(base)
-}
-
-function addSpotlight(scene, x, y, z, targetX, targetZ) {
-  if (IS_MOBILE) return  // spotlights are the #1 mobile perf killer — skip entirely
-  const light = new THREE.SpotLight(0xfff0d0, 5.0, 9, Math.PI / 6, 0.3)
-  light.position.set(x, y, z)
-  light.castShadow = false
-  const target = new THREE.Object3D()
-  target.position.set(targetX, ARTWORK_Y, targetZ)
-  scene.add(target)
-  light.target = target
-  scene.add(light)
-}
-
-export const wallMat = MATS.wall  // exported so main.js can identify wall meshes for occlusion
-
-export function buildLobby(scene, kidNames, kidColors) {
-  const cx = 0, cz = LOBBY_D / 2
-
-  // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat(LOBBY_W, LOBBY_D))
-  floor.position.set(cx, -0.05, cz)
-  floor.userData.notOccludable = true
-  scene.add(floor)
-
-  // Ceiling
-  const ceil = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.ceiling)
-  ceil.position.set(cx, ROOM_H, cz)
-  ceil.userData.notOccludable = true
-  scene.add(ceil)
-
-  // Two ceiling pendants — front and back of lobby for glamorous even fill
-  const lobbyLight1 = new THREE.PointLight(0xfff0d0, 3.5, 22)
-  lobbyLight1.position.set(cx, ROOM_H - 0.3, cz - LOBBY_D / 4)
-  scene.add(lobbyLight1)
-  const lobbyLight2 = new THREE.PointLight(0xfff0d0, 3.5, 22)
-  lobbyLight2.position.set(cx, ROOM_H - 0.3, cz + LOBBY_D / 4)
-  scene.add(lobbyLight2)
-
-  // South wall (entry side — solid)
-  const southWall = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, ROOM_H, 0.15), MATS.wall)
-  southWall.position.set(cx, ROOM_H / 2, 0.075)
-  southWall.receiveShadow = true
-  scene.add(southWall)
-
-  // Left wall
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, LOBBY_D), MATS.wall)
-  leftWall.position.set(cx - LOBBY_W / 2 + 0.075, ROOM_H / 2, cz)
-  scene.add(leftWall)
-
-  // Right wall
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, LOBBY_D), MATS.wall)
-  rightWall.position.set(cx + LOBBY_W / 2 - 0.075, ROOM_H / 2, cz)
-  scene.add(rightWall)
-
-  // Gold crown molding + baseboard on lobby walls
-  addHorzTrim(scene, cx, 0.19, LOBBY_W, 0.09)                          // south wall
-  addHorzTrim(scene, cx - LOBBY_W / 2 + 0.10, cz, 0.09, LOBBY_D)      // left wall
-  addHorzTrim(scene, cx + LOBBY_W / 2 - 0.10, cz, 0.09, LOBBY_D)      // right wall
-
-  // North wall — two door openings: left door centred at X=-2.5, right at X=+2.5
-  const northZ = cz + LOBBY_D / 2
-  const doorXL = cx - 2.5
-  const doorXR = cx + 2.5
-
-  // North wall is split into panels around the two doors:
-  // [far-left panel] [door gap] [middle panel] [door gap] [far-right panel] + top strips
-  const farSideW = (LOBBY_W / 2 - DOOR_W / 2 - 2.5) // width of outermost panels
-  const midW = doorXR - doorXL - DOOR_W              // width of middle panel between doors
-
-  // Far-left panel
-  const nwFL = new THREE.Mesh(new THREE.BoxGeometry(farSideW, ROOM_H, 0.15), MATS.wall)
-  nwFL.position.set(cx - LOBBY_W / 2 + farSideW / 2, ROOM_H / 2, northZ)
-  scene.add(nwFL)
-
-  // Far-right panel
-  const nwFR = new THREE.Mesh(new THREE.BoxGeometry(farSideW, ROOM_H, 0.15), MATS.wall)
-  nwFR.position.set(cx + LOBBY_W / 2 - farSideW / 2, ROOM_H / 2, northZ)
-  scene.add(nwFR)
-
-  // Middle panel (between the two doors)
-  if (midW > 0) {
-    const nwMid = new THREE.Mesh(new THREE.BoxGeometry(midW, ROOM_H, 0.15), MATS.wall)
-    nwMid.position.set(cx, ROOM_H / 2, northZ)
-    scene.add(nwMid)
+// ── Damask wall texture (暗花) — sage green, distinct from white marble ──────
+function makeWallTex() {
+  const S = IS_MOBILE ? 256 : 512, T = IS_MOBILE ? 64 : 128
+  const cvs = document.createElement('canvas'); cvs.width = S; cvs.height = S
+  const ctx = cvs.getContext('2d')
+  ctx.fillStyle = '#c8d4c2'; ctx.fillRect(0, 0, S, S)
+  for (let row = 0; row < S/T; row++) {
+    for (let col = 0; col < S/T; col++) {
+      const cx = col*T + T/2, cy = row*T + T/2, d = 46
+      ctx.strokeStyle = 'rgba(100,130,95,0.55)'; ctx.lineWidth = 1.2
+      ctx.beginPath(); ctx.moveTo(cx,cy-d); ctx.lineTo(cx+d,cy); ctx.lineTo(cx,cy+d); ctx.lineTo(cx-d,cy); ctx.closePath(); ctx.stroke()
+      ctx.fillStyle = 'rgba(100,130,95,0.45)'
+      ctx.beginPath(); ctx.ellipse(cx,cy,9,13,0,0,Math.PI*2); ctx.fill()
+      const pL=21, pW=7
+      ctx.beginPath(); ctx.ellipse(cx,cy-pL-2,pW/2,pL/2,0,0,Math.PI*2); ctx.fill()
+      ctx.beginPath(); ctx.ellipse(cx,cy+pL+2,pW/2,pL/2,0,0,Math.PI*2); ctx.fill()
+      ctx.beginPath(); ctx.ellipse(cx+pL+2,cy,pL/2,pW/2,0,0,Math.PI*2); ctx.fill()
+      ctx.beginPath(); ctx.ellipse(cx-pL-2,cy,pL/2,pW/2,0,0,Math.PI*2); ctx.fill()
+      for (const [dx,dy] of [[17,17],[-17,17],[17,-17],[-17,-17]]) {
+        ctx.beginPath(); ctx.arc(cx+dx,cy+dy,2.5,0,Math.PI*2); ctx.fill()
+      }
+    }
   }
+  return cvs
+}
+function makeWallMat() {
+  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xc8d4c2 })
+  const tex = new THREE.CanvasTexture(makeWallTex())
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 2)
+  return new THREE.MeshLambertMaterial({ map: tex })
+}
 
-  // Top strips above each door opening
-  const topH = ROOM_H - DOOR_H
-  ;[doorXL, doorXR].forEach(dx => {
-    const top = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, topH, 0.15), MATS.wall)
-    top.position.set(dx, DOOR_H + topH / 2, northZ)
-    scene.add(top)
+// ── Crown molding + skirting board (牆腳線) ───────────────────────────────────
+function addWallTrimming(scene, cx, cz, w, d, noOcclude=false) {
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(w, 0.10, d), MATS.trim)
+  crown.position.set(cx, ROOM_H - 0.05, cz); crown.userData.isTrim = true
+  if (noOcclude) crown.userData.notOccludable = true; scene.add(crown)
+  const sk = new THREE.Mesh(new THREE.BoxGeometry(w, 0.30, d), MATS.skirting)
+  sk.position.set(cx, 0.15, cz); sk.userData.isTrim = true
+  if (noOcclude) sk.userData.notOccludable = true; scene.add(sk)
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(w, 0.035, d), MATS.trim)
+  cap.position.set(cx, 0.315, cz); cap.userData.isTrim = true
+  if (noOcclude) cap.userData.notOccludable = true; scene.add(cap)
+}
 
-    // Door arch trim
-    const arch = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W + 0.15, 0.12, 0.15), MATS.trim)
-    arch.position.set(dx, DOOR_H, northZ - 0.08)
-    scene.add(arch)
-  })
+// ── 3D wall panels: dado rail + vertical dividers (牆身3D花紋) ────────────────
+function addSideWallPaneling(scene, wx, wallCz, wallLen, noOcclude=false) {
+  const inward = wx < 0 ? 1 : -1
+  const proj = 0.05
+  const px = wx + inward * proj/2
+  const dado = new THREE.Mesh(new THREE.BoxGeometry(proj, 0.06, wallLen), MATS.trim)
+  dado.position.set(px, DADO_Y, wallCz); dado.userData.isTrim = true
+  if (noOcclude) dado.userData.notOccludable = true; scene.add(dado)
+  for (let i = 0; i < ARTWORK_Z_OFFSETS.length-1; i++) {
+    const midZ = wallCz + (ARTWORK_Z_OFFSETS[i] + ARTWORK_Z_OFFSETS[i+1]) / 2
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(proj, ROOM_H-0.32, 0.05), MATS.trim)
+    bar.position.set(px, ROOM_H/2, midZ); bar.userData.isTrim = true
+    if (noOcclude) bar.userData.notOccludable = true; scene.add(bar)
+  }
+}
+function addFaceWallPaneling(scene, cx, fz, wallW, inward) {
+  const proj = 0.05
+  const pz = fz + inward * proj/2
+  const dado = new THREE.Mesh(new THREE.BoxGeometry(wallW, 0.06, proj), MATS.trim)
+  dado.position.set(cx, DADO_Y, pz); dado.userData.isTrim = true; scene.add(dado)
+  const spacing = 2.5
+  const count = Math.floor(wallW / spacing) - 1
+  for (let i = 1; i <= count; i++) {
+    const divX = cx - wallW/2 + i * (wallW/(count+1))
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.05, ROOM_H-0.32, proj), MATS.trim)
+    bar.position.set(divX, ROOM_H/2, pz); bar.userData.isTrim = true; scene.add(bar)
+  }
+}
 
-  // Wing name signs above each door
-  kidNames.forEach((name, i) => {
-    const dx = i === 0 ? doorXL : doorXR
-    const canvas2d = document.createElement('canvas')
-    canvas2d.width = 256
-    canvas2d.height = 64
-    const ctx = canvas2d.getContext('2d')
-    ctx.clearRect(0, 0, 256, 64)
-    ctx.fillStyle = kidColors[i]
-    ctx.font = 'bold 26px Georgia'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(`${name}'s Wing`, 128, 32)
-    const tex = new THREE.CanvasTexture(canvas2d)
-    const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.8, 0.45),
-      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
-    )
-    sign.position.set(dx, DOOR_H + 0.5, northZ - 0.16)
-    scene.add(sign)
-  })
+// ── Spotlights ────────────────────────────────────────────────────────────────
+function addSpotlight(scene, x, y, z, targetX, targetY, targetZ) {
+  if (IS_MOBILE) return
+  const light = new THREE.SpotLight(0xfff8e0, 5.5, 10, Math.PI/7, 0.25)
+  light.position.set(x, y, z); light.castShadow = false
+  const t = new THREE.Object3D(); t.position.set(targetX, targetY, targetZ)
+  scene.add(t); light.target = t; scene.add(light)
+}
+
+export const wallMat = MATS.wall
+
+// ── Lobby ─────────────────────────────────────────────────────────────────────
+export function buildLobby(scene, kidNames, kidColors) {
+  const cx = 0, cz = LOBBY_D/2
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), makeFloorMat(LOBBY_W, LOBBY_D))
+  floor.position.set(cx, -0.05, cz); floor.userData.notOccludable = true; scene.add(floor)
+
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.ceiling)
+  ceil.position.set(cx, ROOM_H, cz); ceil.userData.notOccludable = true; scene.add(ceil)
+
+  const ll1 = new THREE.PointLight(0xfff0d0, 4.0, 30); ll1.position.set(cx, ROOM_H-0.3, cz-LOBBY_D/4); scene.add(ll1)
+  const ll2 = new THREE.PointLight(0xfff0d0, 4.0, 30); ll2.position.set(cx, ROOM_H-0.3, cz+LOBBY_D/4); scene.add(ll2)
+
+  const fullSpan = LOBBY_W + 2 * ROOM_W   // 28m — full gallery width
+
+  // South wall spans full gallery width so the back is closed even in the wing arm areas
+  const sw = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, ROOM_H, 0.15), MATS.wall)
+  sw.position.set(cx, ROOM_H/2, 0.075); scene.add(sw)
+  addWallTrimming(scene, cx, 0.19, fullSpan, 0.09)
+  addFaceWallPaneling(scene, cx, 0, fullSpan, 1)
+
+  // No lobby side walls or north wall — the gallery opens fully into the junction arms
 
   return {
-    bounds: {
-      xMin: cx - LOBBY_W / 2 + 0.2,
-      xMax: cx + LOBBY_W / 2 - 0.2,
-      zMin: 0.2,
-      zMax: northZ - 0.2
-    },
-    leftDoorX: doorXL,
-    rightDoorX: doorXR,
-    northZ
+    bounds: { xMin: -fullSpan/2+0.4, xMax: fullSpan/2-0.4, zMin: 0.4, zMax: LOBBY_D-0.4 }
   }
 }
 
-function buildRoom(scene, cx, cz, openSouth = false, openInnerSouth = false) {
-  // Floor
+// ── Wing room ─────────────────────────────────────────────────────────────────
+// openSouth: no south wall (entrance from junction); hasNorthWall: solid end wall or open to next room
+function buildRoom(scene, cx, cz, openSouth=false, hasNorthWall=true, noOcclude=false) {
   const floor = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), makeFloorMat(ROOM_W, ROOM_D))
-  floor.position.set(cx, -0.05, cz)
-  floor.userData.notOccludable = true
-  scene.add(floor)
+  floor.position.set(cx, -0.05, cz); floor.userData.notOccludable = true; scene.add(floor)
 
-  // Ceiling
   const ceil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.ceiling)
-  ceil.position.set(cx, ROOM_H, cz)
-  ceil.userData.notOccludable = true
-  scene.add(ceil)
+  ceil.position.set(cx, ROOM_H, cz); ceil.userData.notOccludable = true; scene.add(ceil)
 
-  // Two ceiling pendants — front and back half of room for bright even fill
-  const light1 = new THREE.PointLight(0xfff0d0, 3.0, 20)
-  light1.position.set(cx, ROOM_H - 0.3, cz - ROOM_D / 4)
-  scene.add(light1)
-  const light2 = new THREE.PointLight(0xfff0d0, 3.0, 20)
-  light2.position.set(cx, ROOM_H - 0.3, cz + ROOM_D / 4)
-  scene.add(light2)
+  const mkPt = (x,z) => { const l=new THREE.PointLight(0xfff0d0,3.5,26); l.position.set(x,ROOM_H-0.3,z); scene.add(l) }
+  mkPt(cx, cz-ROOM_D/4); mkPt(cx, cz); mkPt(cx, cz+ROOM_D/4)
 
-  // Left wall — trimmed for right wing room 0 (inner wall faces the junction corridor)
-  const leftShorten = openInnerSouth && cx > 0
-  const leftWallLen = leftShorten ? (cz + ROOM_D / 2) - JUNC_END_Z : ROOM_D
-  const leftWallCz  = leftShorten ? (JUNC_END_Z + cz + ROOM_D / 2) / 2 : cz
-  if (leftWallLen > 0) {
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, leftWallLen), MATS.wall)
-    leftWall.position.set(cx - ROOM_W / 2, ROOM_H / 2, leftWallCz)
-    scene.add(leftWall)
-  }
+  // Left wall
+  const lw = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
+  lw.position.set(cx-ROOM_W/2, ROOM_H/2, cz)
+  lw.userData.notOccludable = noOcclude; scene.add(lw)
+  addWallTrimming(scene, cx-ROOM_W/2+0.10, cz, 0.09, ROOM_D, noOcclude)
+  addSideWallPaneling(scene, cx-ROOM_W/2, cz, ROOM_D, noOcclude)
 
-  // Right wall — trimmed for left wing room 0 (inner wall faces the junction corridor)
-  const rightShorten = openInnerSouth && cx < 0
-  const rightWallLen = rightShorten ? (cz + ROOM_D / 2) - JUNC_END_Z : ROOM_D
-  const rightWallCz  = rightShorten ? (JUNC_END_Z + cz + ROOM_D / 2) / 2 : cz
-  if (rightWallLen > 0) {
-    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, rightWallLen), MATS.wall)
-    rightWall.position.set(cx + ROOM_W / 2, ROOM_H / 2, rightWallCz)
-    scene.add(rightWall)
-  }
+  // Right wall
+  const rw = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, ROOM_D), MATS.wall)
+  rw.position.set(cx+ROOM_W/2, ROOM_H/2, cz)
+  rw.userData.notOccludable = noOcclude; scene.add(rw)
+  addWallTrimming(scene, cx+ROOM_W/2-0.10, cz, 0.09, ROOM_D, noOcclude)
+  addSideWallPaneling(scene, cx+ROOM_W/2, cz, ROOM_D, noOcclude)
 
-  // Gold crown molding + baseboard along side walls
-  addHorzTrim(scene, cx - ROOM_W / 2 + 0.10, leftShorten ? leftWallCz : cz,  0.09, leftWallLen  > 0 ? leftWallLen  : ROOM_D)
-  addHorzTrim(scene, cx + ROOM_W / 2 - 0.10, rightShorten ? rightWallCz : cz, 0.09, rightWallLen > 0 ? rightWallLen : ROOM_D)
-
-  // Decorative gold pilasters between the three artwork bays
-  const PILASTER_H = ROOM_H - 0.30
-  for (const pz of [cz - 1.75, cz + 1.75]) {
-    const pl = new THREE.Mesh(new THREE.BoxGeometry(0.08, PILASTER_H, 0.10), MATS.trim)
-    pl.position.set(cx - ROOM_W / 2 + 0.12, ROOM_H / 2, pz)
-    scene.add(pl)
-    const pr = new THREE.Mesh(new THREE.BoxGeometry(0.08, PILASTER_H, 0.10), MATS.trim)
-    pr.position.set(cx + ROOM_W / 2 - 0.12, ROOM_H / 2, pz)
-    scene.add(pr)
-  }
-
-  // Back wall (south) — omitted for first room so player can enter from the junction corridor
+  // South wall (omitted when open to junction)
   if (!openSouth) {
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
-    backWall.position.set(cx, ROOM_H / 2, cz - ROOM_D / 2)
-    scene.add(backWall)
-    addHorzTrim(scene, cx, cz - ROOM_D / 2 + 0.10, ROOM_W, 0.09)
+    const bw = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
+    bw.position.set(cx, ROOM_H/2, cz-ROOM_D/2); scene.add(bw)
+    addWallTrimming(scene, cx, cz-ROOM_D/2+0.10, ROOM_W, 0.09)
+    addFaceWallPaneling(scene, cx, cz-ROOM_D/2, ROOM_W, 1)
   }
 
-  // Front wall (north) — with door opening to next room
-  const frontZ = cz + ROOM_D / 2
-  const sideW = (ROOM_W - DOOR_W) / 2
-  const topH = ROOM_H - DOOR_H
-  ;[
-    [cx - DOOR_W / 2 - sideW / 2, ROOM_H / 2,         sideW, ROOM_H],
-    [cx + DOOR_W / 2 + sideW / 2, ROOM_H / 2,         sideW, ROOM_H],
-    [cx,                           DOOR_H + topH / 2,  DOOR_W, topH ],
-  ].forEach(([px, py, pw, ph]) => {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 0.15), MATS.wall)
-    m.position.set(px, py, frontZ)
-      scene.add(m)
-  })
+  // North wall: solid end (last room) or open passage to next room
+  const frontZ = cz + ROOM_D/2
+  if (hasNorthWall) {
+    const fw = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.15), MATS.wall)
+    fw.position.set(cx, ROOM_H/2, frontZ); scene.add(fw)
+    addWallTrimming(scene, cx, frontZ, ROOM_W, 0.09)
+    addFaceWallPaneling(scene, cx, frontZ, ROOM_W, -1)
+  }
 
-  // Artwork spotlights + slots
+  // Artwork slots + spotlights
   const slots = []
   for (const dz of ARTWORK_Z_OFFSETS) {
-    const lx = cx - ROOM_W / 2 + 0.16
-    const rx = cx + ROOM_W / 2 - 0.16
-    addSpotlight(scene, lx + 0.5, ROOM_H - 0.3, cz + dz, lx, cz + dz)
-    addSpotlight(scene, rx - 0.5, ROOM_H - 0.3, cz + dz, rx, cz + dz)
-    slots.push({ position: new THREE.Vector3(lx, ARTWORK_Y, cz + dz), normalX:  1, kidIndex: null, artworkIndex: null })
-    slots.push({ position: new THREE.Vector3(rx, ARTWORK_Y, cz + dz), normalX: -1, kidIndex: null, artworkIndex: null })
+    const lx = cx - ROOM_W/2 + 0.16
+    const rx = cx + ROOM_W/2 - 0.16
+    addSpotlight(scene, lx+0.5, ROOM_H-0.4, cz+dz-0.4, lx, ARTWORK_Y, cz+dz)
+    addSpotlight(scene, lx+0.5, ROOM_H-0.4, cz+dz+0.4, lx, ARTWORK_Y, cz+dz)
+    addSpotlight(scene, rx-0.5, ROOM_H-0.4, cz+dz-0.4, rx, ARTWORK_Y, cz+dz)
+    addSpotlight(scene, rx-0.5, ROOM_H-0.4, cz+dz+0.4, rx, ARTWORK_Y, cz+dz)
+    slots.push({ position: new THREE.Vector3(lx, ARTWORK_Y, cz+dz), normalX:  1, kidIndex: null, artworkIndex: null })
+    slots.push({ position: new THREE.Vector3(rx, ARTWORK_Y, cz+dz), normalX: -1, kidIndex: null, artworkIndex: null })
   }
 
   return {
     slots,
     bounds: {
-      xMin: cx - ROOM_W / 2 + 0.2,
-      xMax: cx + ROOM_W / 2 - 0.2,
-      zMin: cz - ROOM_D / 2 + 0.2,
-      zMax: cz + ROOM_D / 2 - 0.2
+      xMin: cx-ROOM_W/2+0.4, xMax: cx+ROOM_W/2-0.4,
+      zMin: cz-ROOM_D/2+0.4, zMax: cz+ROOM_D/2-0.4
     }
   }
 }
 
+// ── Wings ─────────────────────────────────────────────────────────────────────
 export function buildWings(scene, manifest) {
-  const allSlots = []
-  const allBounds = []
+  const allSlots = [], allBounds = []
 
-  // T-junction corridor: bridges the lobby north doors to the two wing room entrances.
-  // The lobby doors are at x=±2.5, z=10. The wings are at x=±10. The corridor lets
-  // the player walk laterally from a door to whichever wing they want.
-  const juncZ = LOBBY_D + 0.6        // corridor centre z = 10.6
-  const juncDepth = 1.4              // corridor spans z=10 to z=11.4 (approx)
-  const juncHalfD = juncDepth / 2
-  const fullSpan = LOBBY_W + ROOM_W  // =20, covers x=-10..+10 with some extra
+  const juncZ    = LOBBY_D + JUNC_DEPTH / 2     // corridor centre z = 12
+  const fullSpan = LOBBY_W + 2 * ROOM_W          // full corridor width = 28
 
-  // Floor bridge covering the gap between lobby and wing floors
-  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), makeFloorMat(fullSpan, juncDepth + 0.2))
-  bFloor.position.set(0, -0.05, juncZ)
-  bFloor.receiveShadow = true
-  bFloor.userData.notOccludable = true
-  scene.add(bFloor)
+  // Floor + ceiling span full gallery width and the entire lobby+junction depth (z=0–14)
+  const totalDepth = LOBBY_D + JUNC_DEPTH   // 14
+  const totalCz    = totalDepth / 2          // 7
+  const bFloor = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, totalDepth), makeFloorMat(fullSpan, totalDepth))
+  bFloor.position.set(0, -0.05, totalCz); bFloor.userData.notOccludable = true; scene.add(bFloor)
 
-  // Ceiling bridge
-  const bCeil = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, juncDepth + 0.2), MATS.ceiling)
-  bCeil.position.set(0, ROOM_H, juncZ)
-  bCeil.userData.notOccludable = true
-  scene.add(bCeil)
+  const bCeil = new THREE.Mesh(new THREE.BoxGeometry(fullSpan, 0.1, totalDepth), MATS.ceiling)
+  bCeil.position.set(0, ROOM_H, totalCz); bCeil.userData.notOccludable = true; scene.add(bCeil)
 
-  // Back wall of junction (blocks the void between the two wings)
-  const bBack = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, ROOM_H, 0.15), MATS.wall)
-  bBack.position.set(0, ROOM_H / 2, LOBBY_D + juncDepth)
-  scene.add(bBack)
+  // Outer side walls at x = ±14, spanning full lobby+junction depth
+  ;[-1, 1].forEach(side => {
+    const faceX = side * fullSpan / 2
+    const meshX = faceX - side * 0.075
+    const ow = new THREE.Mesh(new THREE.BoxGeometry(0.15, ROOM_H, totalDepth), MATS.wall)
+    ow.position.set(meshX, ROOM_H/2, totalCz)
+    scene.add(ow)
+    addWallTrimming(scene, meshX - side * 0.025, totalCz, 0.09, totalDepth)
+    addSideWallPaneling(scene, faceX, totalCz, totalDepth)
+  })
 
-  // Junction corridor light
-  const jLight = new THREE.PointLight(0xfff0d0, 2.5, 24)
-  jLight.position.set(0, ROOM_H - 0.3, juncZ)
-  scene.add(jLight)
+  // Arm south walls REMOVED — gallery entrance is now fully open across the entire width
 
-  // Bounds: narrow door passages (prevent walking through solid wall panels),
-  // then full-width lateral corridor past the wall.
-  const DOOR_HALF = DOOR_W / 2
+  // Directional wing signs suspended in the junction (no back wall — open passage to wings)
+  manifest.kids.forEach((kid, i) => {
+    // Kayden (i=0) at x=+3 (screen left), wing at x=+10 (screen left) → arrow ←
+    // Kaylie (i=1) at x=−3 (screen right), wing at x=−10 (screen right) → arrow →
+    const arrowLeft = i === 0
+    const W = 512, H = 128
+    const cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H
+    const ctx = cvs.getContext('2d')
+
+    // Dark navy background
+    ctx.fillStyle = '#0f1b2d'; ctx.fillRect(0, 0, W, H)
+
+    // Outer gold border
+    ctx.strokeStyle = '#c8a820'; ctx.lineWidth = 3; ctx.strokeRect(4, 4, W-8, H-8)
+
+    // Thin inner accent line
+    ctx.strokeStyle = 'rgba(200,168,32,0.4)'; ctx.lineWidth = 1; ctx.strokeRect(10, 10, W-20, H-20)
+
+    // Corner bracket ornaments
+    const orn = 18; ctx.strokeStyle = '#c8a820'; ctx.lineWidth = 2
+    ;[[8,8],[W-8,8],[8,H-8],[W-8,H-8]].forEach(([ox, oy]) => {
+      const sx = ox < W/2 ? 1 : -1, sy = oy < H/2 ? 1 : -1
+      ctx.beginPath(); ctx.moveTo(ox+sx*orn, oy); ctx.lineTo(ox, oy); ctx.lineTo(ox, oy+sy*orn); ctx.stroke()
+    })
+
+    // Arrow in gold
+    ctx.font = 'bold 54px Georgia'; ctx.fillStyle = '#c8a820'; ctx.textBaseline = 'middle'
+    if (arrowLeft) { ctx.textAlign = 'left';  ctx.fillText('←', 20, H/2) }
+    else           { ctx.textAlign = 'right'; ctx.fillText('→', W-20, H/2) }
+
+    // Wing name in kid colour
+    ctx.font = 'bold 38px Georgia'; ctx.fillStyle = kid.color
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+    ctx.fillText(`${kid.name}'s Wing`, W/2, H/2)
+
+    const tex = new THREE.CanvasTexture(cvs)
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 1.0), mat)
+    sign.userData.notOccludable = true
+    sign.position.set(i === 0 ? 3 : -3, 2.8, JUNC_END_Z - 0.16)
+    sign.rotation.y = Math.PI
+    scene.add(sign)
+  })
+
+  // Junction north wall — centre section only (x = -6…+6); wing openings are on the sides.
+  // Signs hang on the south face. Occludable so it fades only when genuinely between camera
+  // and player (e.g. camera clips through it from behind).
+  const jnw = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, ROOM_H, 0.15), MATS.wall)
+  jnw.position.set(0, ROOM_H/2, JUNC_END_Z); scene.add(jnw)
+  addWallTrimming(scene, 0, JUNC_END_Z, LOBBY_W, 0.09)
+  addFaceWallPaneling(scene, 0, JUNC_END_Z, LOBBY_W, -1)
+
+  // Junction lighting — three evenly spaced pendants across the width
+  ;[0, -10, 10].forEach(lx => {
+    const jl = new THREE.PointLight(0xfff0d0, 3.5, 30)
+    jl.position.set(lx, ROOM_H-0.3, juncZ); scene.add(jl)
+  })
+
   allBounds.push(
-    // Left door passage
-    { xMin: -2.5 - DOOR_HALF, xMax: -2.5 + DOOR_HALF, zMin: LOBBY_D - 0.3, zMax: LOBBY_D + 0.3 },
-    // Right door passage
-    { xMin:  2.5 - DOOR_HALF, xMax:  2.5 + DOOR_HALF, zMin: LOBBY_D - 0.3, zMax: LOBBY_D + 0.3 },
-    // Full lateral corridor
-    { xMin: -(LOBBY_W / 2 + ROOM_W / 2 - 0.2), xMax: LOBBY_W / 2 + ROOM_W / 2 - 0.2,
-      zMin: LOBBY_D + 0.2, zMax: LOBBY_D + juncDepth - 0.1 }
+    // Full-width passthrough — entire lobby+junction is one open space.
+    // zMax stops short of the centre wall so the player can't clip into it.
+    { xMin: -fullSpan/2+0.4, xMax: fullSpan/2-0.4, zMin: 0.4, zMax: JUNC_END_Z-0.4 }
   )
 
   manifest.kids.forEach((kid, kidIdx) => {
-    const wingX = kidIdx === 0 ? -10 : 10
+    const wingX = kidIdx === 0 ? 10 : -10
     const artworks = kid.artworks
-    const roomCount = Math.max(1, Math.ceil(artworks.length / 6))
+    const slotsPerRoom = ARTWORK_Z_OFFSETS.length * 2
+    const roomCount = Math.max(1, Math.ceil(artworks.length / slotsPerRoom))
+
+    // Wing entry connector spans ±0.70 so that, after Z_RADIUS (0.15) is applied,
+    // effective zMin = junction zMax_eff (13.45) and effective zMax = room zMin_eff (14.55).
+    allBounds.push({
+      xMin: wingX - ROOM_W/2 + 0.4, xMax: wingX + ROOM_W/2 - 0.4,
+      zMin: JUNC_END_Z - 0.70, zMax: JUNC_END_Z + 0.70
+    })
 
     for (let r = 0; r < roomCount; r++) {
-      const cz = LOBBY_D + ROOM_D / 2 + r * ROOM_D
-      // Always omit south wall: room 0's south is open to the corridor;
-      // rooms r>0 south is already handled by room r-1's north door wall.
-      // For room 0, trim the inner side wall so the junction corridor is open.
-      const { slots, bounds } = buildRoom(scene, wingX, cz, true, r === 0)
+      const cz = JUNC_END_Z + ROOM_D/2 + r * ROOM_D
+      const isLast = r === roomCount - 1
+      const { slots, bounds } = buildRoom(scene, wingX, cz, true, isLast)
 
       slots.forEach((slot, s) => {
-        const artIdx = r * 6 + s
+        const artIdx = r*slotsPerRoom + s
         slot.kidIndex = kidIdx
         slot.artworkIndex = artIdx < artworks.length ? artIdx : null
         allSlots.push(slot)
       })
-
       allBounds.push(bounds)
 
-      // Bridge the 0.4-unit bound gap at the north door between consecutive rooms
-      if (r < roomCount - 1) {
+      if (r < roomCount-1) {
+        // Inter-room connector spans ±0.70 so effective zMin/zMax match adjacent room bounds
+        // after Z_RADIUS (0.15) is applied (room zMax_eff = wall - 0.55, connector zMin_eff = wall - 0.55).
         allBounds.push({
-          xMin: wingX - DOOR_W / 2,
-          xMax: wingX + DOOR_W / 2,
-          zMin: cz + ROOM_D / 2 - 0.35,
-          zMax: cz + ROOM_D / 2 + 0.35
+          xMin: wingX - ROOM_W/2 + 0.4, xMax: wingX + ROOM_W/2 - 0.4,
+          zMin: cz + ROOM_D/2 - 0.70, zMax: cz + ROOM_D/2 + 0.70
         })
       }
     }
