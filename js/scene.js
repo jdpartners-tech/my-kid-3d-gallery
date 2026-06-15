@@ -7,7 +7,7 @@ export function initScene() {
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE })
   renderer.setSize(window.innerWidth, window.innerHeight)
-  renderer.setPixelRatio(IS_MOBILE ? 1 : Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2))
   renderer.shadowMap.enabled = false
 
   const scene = new THREE.Scene()
@@ -19,7 +19,7 @@ export function initScene() {
   camera.position.set(0, 3, -5)
 
   // Higher ambient on mobile compensates for no spotlights
-  scene.add(new THREE.AmbientLight(0xfff8ee, IS_MOBILE ? 1.2 : 0.7))
+  scene.add(new THREE.AmbientLight(0xfff8ee, IS_MOBILE ? 1.8 : 1.2))
 
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight

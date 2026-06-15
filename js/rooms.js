@@ -49,7 +49,6 @@ function makeMarbleTex(seed) {
   return cvs
 }
 function makeFloorMat(rx=4, rz=4) {
-  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xf0ece6 })
   const tex = new THREE.CanvasTexture(makeMarbleTex(++_mSeed))
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(rx/3, rz/3)
   return new THREE.MeshLambertMaterial({ map: tex })
@@ -81,7 +80,6 @@ function makeWallTex() {
   return cvs
 }
 function makeWallMat() {
-  if (IS_MOBILE) return new THREE.MeshLambertMaterial({ color: 0xc8d4c2 })
   const tex = new THREE.CanvasTexture(makeWallTex())
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 2)
   return new THREE.MeshLambertMaterial({ map: tex })
@@ -150,8 +148,8 @@ export function buildLobby(scene, kidNames, kidColors) {
   const ceil = new THREE.Mesh(new THREE.BoxGeometry(LOBBY_W, 0.1, LOBBY_D), MATS.ceiling)
   ceil.position.set(cx, ROOM_H, cz); ceil.userData.notOccludable = true; scene.add(ceil)
 
-  const ll1 = new THREE.PointLight(0xfff0d0, 4.0, 30); ll1.position.set(cx, ROOM_H-0.3, cz-LOBBY_D/4); scene.add(ll1)
-  const ll2 = new THREE.PointLight(0xfff0d0, 4.0, 30); ll2.position.set(cx, ROOM_H-0.3, cz+LOBBY_D/4); scene.add(ll2)
+  const ll1 = new THREE.PointLight(0xfff0d0, 6.5, 30); ll1.position.set(cx, ROOM_H-0.3, cz-LOBBY_D/4); scene.add(ll1)
+  const ll2 = new THREE.PointLight(0xfff0d0, 6.5, 30); ll2.position.set(cx, ROOM_H-0.3, cz+LOBBY_D/4); scene.add(ll2)
 
   const fullSpan = LOBBY_W + 2 * ROOM_W   // 28m — full gallery width
 
@@ -177,7 +175,7 @@ function buildRoom(scene, cx, cz, openSouth=false, hasNorthWall=true, noOcclude=
   const ceil = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, 0.1, ROOM_D), MATS.ceiling)
   ceil.position.set(cx, ROOM_H, cz); ceil.userData.notOccludable = true; scene.add(ceil)
 
-  const mkPt = (x,z) => { const l=new THREE.PointLight(0xfff0d0,3.5,26); l.position.set(x,ROOM_H-0.3,z); scene.add(l) }
+  const mkPt = (x,z) => { const l=new THREE.PointLight(0xfff0d0,6.0,26); l.position.set(x,ROOM_H-0.3,z); scene.add(l) }
   mkPt(cx, cz-ROOM_D/4); mkPt(cx, cz); mkPt(cx, cz+ROOM_D/4)
 
   // Left wall
@@ -316,7 +314,7 @@ export function buildWings(scene, manifest) {
 
   // Junction lighting — three evenly spaced pendants across the width
   ;[0, -10, 10].forEach(lx => {
-    const jl = new THREE.PointLight(0xfff0d0, 3.5, 30)
+    const jl = new THREE.PointLight(0xfff0d0, 6.0, 30)
     jl.position.set(lx, ROOM_H-0.3, juncZ); scene.add(jl)
   })
 
