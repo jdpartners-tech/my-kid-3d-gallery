@@ -76,12 +76,12 @@ export const CHARACTERS = [
   { id: 'Wolf',              label: 'Wolf' },
   { id: 'Zebra',             label: 'Zebra' },
   // ── Dinosaurs ───────────────────────────────────────────────────────────────
-  { id: 'Apatosaurus',       label: 'Apatosaurus',     targetHeight: 1.8 },
-  { id: 'Parasaurolophus',   label: 'Parasaurolophus', targetHeight: 1.8 },
-  { id: 'Stegosaurus',       label: 'Stegosaurus',     targetHeight: 1.8 },
-  { id: 'Triceratops',       label: 'Triceratops',     targetHeight: 1.8 },
-  { id: 'TRex',              label: 'T-Rex',            targetHeight: 1.8 },
-  { id: 'Velociraptor',      label: 'Velociraptor',     targetHeight: 1.8 },
+  { id: 'Apatosaurus',       label: 'Apatosaurus',     targetHeight: 1.8, walkTimeScale: 2.5 },
+  { id: 'Parasaurolophus',   label: 'Parasaurolophus', targetHeight: 1.8, walkTimeScale: 2.5 },
+  { id: 'Stegosaurus',       label: 'Stegosaurus',     targetHeight: 1.8, walkTimeScale: 2.5 },
+  { id: 'Triceratops',       label: 'Triceratops',     targetHeight: 1.8, walkTimeScale: 2.5 },
+  { id: 'TRex',              label: 'T-Rex',            targetHeight: 1.8, walkTimeScale: 2.5 },
+  { id: 'Velociraptor',      label: 'Velociraptor',     targetHeight: 1.8, walkTimeScale: 2.5 },
 ]
 
 export function findAnim(clips, keyword) {
@@ -101,6 +101,11 @@ export function getCharacterPath(id) {
 export function getCharacterTargetHeight(modelPath) {
   const id = modelPath.split('/').pop().replace('.glb', '')
   return CHARACTERS.find(c => c.id === id)?.targetHeight ?? 1.8
+}
+
+export function getWalkTimeScale(modelPath) {
+  const id = modelPath.split('/').pop().replace('.glb', '')
+  return CHARACTERS.find(c => c.id === id)?.walkTimeScale ?? 1.0
 }
 
 // ── Preview renderer ──────────────────────────────────────────────────────────

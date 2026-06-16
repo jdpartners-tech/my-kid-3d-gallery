@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { findAnim, getCharacterTargetHeight } from './character-select.js'
+import { findAnim, getCharacterTargetHeight, getWalkTimeScale } from './character-select.js'
 
 const SPEED = 4.0
 const CHAR_RADIUS = 0.35
@@ -35,6 +35,8 @@ export async function loadCharacter(scene, modelPath = 'assets/characters/Advent
   const idleAction = idleClip ? mixer.clipAction(idleClip) : null
   const walkAction = walkClip ? mixer.clipAction(walkClip) : null
   const runAction  = runClip  ? mixer.clipAction(runClip)  : null
+
+  if (walkAction) walkAction.timeScale = getWalkTimeScale(modelPath)
 
   if (idleAction) idleAction.play()
   else if (walkAction) walkAction.play()
