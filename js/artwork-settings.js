@@ -1,3 +1,5 @@
+import { saveOverridesToCloud } from './firebase-sync.js'
+
 const STORAGE_KEY = 'gallery-artwork-overrides'
 
 export function getArtworkOverrides() {
@@ -6,6 +8,7 @@ export function getArtworkOverrides() {
 
 function saveOverrides(overrides) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+  saveOverridesToCloud(overrides)
 }
 
 export function showArtworkSettings(manifest) {

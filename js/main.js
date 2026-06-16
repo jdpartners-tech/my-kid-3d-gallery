@@ -6,6 +6,7 @@ import { loadArtworks, checkProximity, hideFullscreen, isFullscreen, viewNearest
 import { isMobile, IS_MOBILE, createMobileControls } from './mobile.js'
 import { createVisitors, updateVisitors } from './visitors.js'
 import { showCharacterSelect } from './character-select.js'
+import { loadOverridesFromCloud } from './firebase-sync.js'
 
 function dismissLoader() {
   const loader = document.getElementById('loader')
@@ -46,9 +47,15 @@ function showLoaderError(msg) {
 
   let manifest
   try {
-    const res = await fetch('manifest.json')
+    const [res, cloudOverrides] = await Promise.all([
+      fetch('manifest.json'),
+      loadOverridesFromCloud()
+    ])
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     manifest = await res.json()
+    if (cloudOverrides !== null) {
+      localStorage.setItem('gallery-artwork-overrides', JSON.stringify(cloudOverrides))
+    }
   } catch (err) {
     console.error('Failed to load manifest:', err)
     showLoaderError('Could not load artwork list — check your connection.')
