@@ -157,28 +157,36 @@
       border-bottom: 1px solid rgba(200,168,32,0.2);
     }
     #as-title { color: #c8a820; font-size: 1.4rem; letter-spacing: 0.1em; }
-    #as-body { flex: 1; overflow-y: auto; padding: 8px 36px 24px; }
+    #as-body { flex: 1; overflow-y: auto; padding: 8px 20px 24px; }
     .as-section-title {
       font-size: 0.95rem; letter-spacing: 0.08em;
-      margin: 22px 0 8px; font-family: monospace;
+      margin: 18px 0 10px; font-family: monospace;
     }
-    .as-row {
-      display: flex; align-items: center; gap: 14px;
-      padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+    .as-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      margin-bottom: 8px;
     }
-    .as-thumb-canvas {
-      width: 56px; height: 56px; flex-shrink: 0;
-      border-radius: 4px; background: #1a1a1a;
+    .as-item {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
     }
     .as-num {
-      width: 36px; flex-shrink: 0;
-      color: rgba(255,255,255,0.45); font-family: monospace; font-size: 0.8rem;
+      color: rgba(255,255,255,0.45); font-family: monospace; font-size: 0.72rem;
     }
+    .as-thumb-wrap {
+      width: 100%; aspect-ratio: 1;
+      overflow: hidden; border-radius: 4px; background: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .as-thumb {
+      width: 85%; height: 85%; object-fit: contain;
+      transition: transform 0.3s;
+    }
+    .as-btns { display: flex; gap: 6px; }
     .as-rot-btn {
       background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.14);
-      border-radius: 6px; color: #fff; font-size: 1.3rem; cursor: pointer;
-      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: background 0.15s;
+      border-radius: 6px; color: #fff; font-size: 1.1rem; cursor: pointer;
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
     }
     .as-rot-btn:hover { background: rgba(200,168,32,0.2); border-color: rgba(200,168,32,0.5); }
     #as-footer {
