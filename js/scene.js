@@ -12,9 +12,9 @@ export function initScene() {
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x1a1510)
-  scene.fog = new THREE.Fog(0x1a1510, IS_MOBILE ? 18 : 28, IS_MOBILE ? 42 : 65)
+  scene.fog = new THREE.Fog(0x1a1510, IS_MOBILE ? 35 : 28, IS_MOBILE ? 75 : 65)
 
-  const far = IS_MOBILE ? 35 : 100
+  const far = IS_MOBILE ? 80 : 100
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, far)
   camera.position.set(0, 3, -5)
 
