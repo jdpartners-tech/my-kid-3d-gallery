@@ -233,6 +233,7 @@ function showLoaderError(msg) {
       input.backward = m.backward
       input.left     = m.left
       input.right    = m.right
+      input.xAxis    = m.xAxis   // analog [-1,1] for proportional left/right speed
       input.dx += mobileControls.getCameraDx()
     } else {
       input.forward  = !!(keys['w'] || keys['arrowup'])

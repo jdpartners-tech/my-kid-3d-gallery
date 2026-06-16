@@ -67,8 +67,10 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
   const dir = new THREE.Vector3()
   if (input.forward)  dir.z -= 1
   if (input.backward) dir.z += 1
-  if (input.left)     dir.x -= 1
-  if (input.right)    dir.x += 1
+  // Use analog joystick magnitude when available so gentle sideways push = slow turn
+  const xMag = input.xAxis !== undefined ? Math.abs(input.xAxis) : 1
+  if (input.left)  dir.x -= xMag
+  if (input.right) dir.x += xMag
   dir.normalize()
 
   dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), char._yaw)
@@ -81,7 +83,7 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
     let rotDiff = (targetRot - Math.PI) - char.mesh.rotation.y
     while (rotDiff >  Math.PI) rotDiff -= 2 * Math.PI
     while (rotDiff < -Math.PI) rotDiff += 2 * Math.PI
-    char.mesh.rotation.y += rotDiff * Math.min(1, delta * 2)
+    char.mesh.rotation.y += rotDiff * Math.min(1, delta * 1.2)
   }
 
   const speed = input.sprint ? SPEED * 2.0 : SPEED
