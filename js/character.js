@@ -29,7 +29,7 @@ export async function loadCharacter(scene, modelPath = 'assets/characters/Advent
 
   const mixer = new THREE.AnimationMixer(mesh)
   const idleClip = findAnim(gltf.animations, 'idle')
-  const walkClip = findAnim(gltf.animations, 'gallop') || findAnim(gltf.animations, 'walk')
+  const walkClip = findAnim(gltf.animations, 'gallop') || findAnim(gltf.animations, 'walk') || findAnim(gltf.animations, 'run')
   const runClip  = findAnim(gltf.animations, 'run')
 
   const idleAction = idleClip ? mixer.clipAction(idleClip) : null
@@ -85,7 +85,7 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
     let rotDiff = (targetRot - Math.PI) - char.mesh.rotation.y
     while (rotDiff >  Math.PI) rotDiff -= 2 * Math.PI
     while (rotDiff < -Math.PI) rotDiff += 2 * Math.PI
-    char.mesh.rotation.y += rotDiff * Math.min(1, delta * 1.2)
+    char.mesh.rotation.y += rotDiff * Math.min(1, delta * 0.5)
   }
 
   const speed = input.sprint ? SPEED * 2.0 : SPEED

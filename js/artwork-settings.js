@@ -11,21 +11,38 @@ function saveOverrides(overrides) {
   saveOverridesToCloud(overrides)
 }
 
+function drawThumb(cvs, img, rotateDeg) {
+  const S = cvs.width
+  const ctx = cvs.getContext('2d')
+  ctx.clearRect(0, 0, S, S)
+  if (!img.complete || img.naturalWidth === 0) return
+  const swap = rotateDeg === 90 || rotateDeg === 270
+  const iw = img.naturalWidth, ih = img.naturalHeight
+  const srcW = swap ? ih : iw, srcH = swap ? iw : ih
+  const scale = Math.min((S - 4) / srcW, (S - 4) / srcH)
+  const dw = srcW * scale, dh = srcH * scale
+  ctx.save()
+  ctx.translate(S / 2, S / 2)
+  ctx.rotate(rotateDeg * Math.PI / 180)
+  ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh)
+  ctx.restore()
+}
+
 export function showArtworkSettings(manifest) {
   return new Promise(resolve => {
     const overrides = getArtworkOverrides()
+
+    // Immediately push current localStorage state to cloud (catches offline edits)
+    saveOverridesToCloud(overrides)
 
     const overlay = document.createElement('div')
     overlay.id = 'art-settings'
     overlay.innerHTML = `
       <div id="as-header">
-        <div id="as-title">Artwork Orientation Settings</div>
-        <div id="as-sub">Rotate each painting until it looks correct · Changes save automatically</div>
+        <div id="as-title">Artwork Orientation</div>
       </div>
       <div id="as-body"></div>
-      <div id="as-footer">
-        <button id="as-done">Done</button>
-      </div>
+      <div id="as-footer"><button id="as-done">Done</button></div>
     `
     document.body.appendChild(overlay)
 
@@ -44,78 +61,39 @@ export function showArtworkSettings(manifest) {
       kid.artworks.forEach((aw, i) => {
         const num = String(i + 1).padStart(3, '0')
         const key = `${kid.name}/${num}`
-
-        // Merge: manifest rotate → localStorage override
         const baseRotate = aw.rotate || 0
         const state = { rotate: overrides[key]?.rotate ?? baseRotate }
 
         const row = document.createElement('div')
         row.className = 'as-row'
 
-        const thumbWrap = document.createElement('div')
-        thumbWrap.className = 'as-thumb-wrap'
-        const img = document.createElement('img')
-        img.className = 'as-thumb'
-        img.src = aw.file
-        img.loading = 'lazy'
-        thumbWrap.appendChild(img)
-
         const numLabel = document.createElement('div')
         numLabel.className = 'as-num'
         numLabel.textContent = num
 
+        const cvs = document.createElement('canvas')
+        cvs.className = 'as-thumb-canvas'
+        cvs.width = 56; cvs.height = 56
+
         const btnL = document.createElement('button')
-        btnL.className = 'as-rot-btn'
-        btnL.textContent = '↺'
+        btnL.className = 'as-rot-btn'; btnL.textContent = '↺'
         btnL.title = 'Rotate 90° counter-clockwise'
 
-        const orientLabel = document.createElement('div')
-        orientLabel.className = 'as-orient'
-
         const btnR = document.createElement('button')
-        btnR.className = 'as-rot-btn'
-        btnR.textContent = '↻'
+        btnR.className = 'as-rot-btn'; btnR.textContent = '↻'
         btnR.title = 'Rotate 90° clockwise'
 
-        row.append(thumbWrap, numLabel, btnL, orientLabel, btnR)
+        row.append(numLabel, cvs, btnL, btnR)
         section.appendChild(row)
 
-        function updateRow() {
-          img.style.transform = `rotate(${state.rotate}deg)`
-          const swap = state.rotate === 90 || state.rotate === 270
-          const nw = img.naturalWidth || 1, nh = img.naturalHeight || 1
-          const effW = swap ? nh : nw, effH = swap ? nw : nh
-          const isLandscape = aw.landscape || effW > effH * 1.15
-          orientLabel.textContent = isLandscape ? '打橫 Landscape' : '打直 Portrait'
-          orientLabel.className = 'as-orient ' + (isLandscape ? 'landscape' : 'portrait')
-        }
-
-        img.addEventListener('load', updateRow)
-        updateRow()
-
-        // Click thumbnail to enlarge / shrink
-        let enlarged = false
-        thumbWrap.style.cursor = 'zoom-in'
-        thumbWrap.addEventListener('click', () => {
-          enlarged = !enlarged
-          if (enlarged) {
-            thumbWrap.style.width = '200px'
-            thumbWrap.style.height = '200px'
-            img.style.width = '196px'
-            img.style.height = '196px'
-            thumbWrap.style.cursor = 'zoom-out'
-          } else {
-            thumbWrap.style.width = '72px'
-            thumbWrap.style.height = '72px'
-            img.style.width = '68px'
-            img.style.height = '68px'
-            thumbWrap.style.cursor = 'zoom-in'
-          }
-        })
+        const img = new Image()
+        img.addEventListener('load', () => drawThumb(cvs, img, state.rotate))
+        img.src = aw.file
+        drawThumb(cvs, img, state.rotate)
 
         function applyRotate(deg) {
           state.rotate = ((state.rotate + deg) + 360) % 360
-          updateRow()
+          drawThumb(cvs, img, state.rotate)
           const ovrs = getArtworkOverrides()
           if (state.rotate === 0) delete ovrs[key]
           else ovrs[key] = { rotate: state.rotate }

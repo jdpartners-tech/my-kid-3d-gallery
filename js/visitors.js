@@ -108,7 +108,7 @@ async function loadVisitor(loader, scene, route, charId, artworkPositions) {
   scene.add(mesh)
 
   const mixer = new THREE.AnimationMixer(mesh)
-  const walkClip = findAnim(gltf.animations, 'walk')
+  const walkClip = findAnim(gltf.animations, 'walk') || findAnim(gltf.animations, 'run')
   const idleClip = findAnim(gltf.animations, 'idle')
   const walkAction = walkClip ? mixer.clipAction(walkClip) : null
   const idleAction = idleClip ? mixer.clipAction(idleClip) : null
