@@ -7,7 +7,7 @@ export const CHARACTERS = [
   // ── People ──────────────────────────────────────────────────────────────────
   { id: 'Adventurer',        label: 'Adventurer' },
   { id: 'Adventurer2',       label: 'Adventurer II' },
-  { id: 'AnimatedBase',      label: 'Animated Base' },
+  { id: 'AnimatedBase',      label: 'Animated Base',  noVisitor: true },
   { id: 'AnimatedHuman',     label: 'Human' },
   { id: 'AnimatedWoman',     label: 'Woman' },
   { id: 'AnimatedWoman2',    label: 'Woman II' },
@@ -20,7 +20,7 @@ export const CHARACTERS = [
   { id: 'BeachCharacter',    label: 'Beach Goer' },
   { id: 'BusinessMan',       label: 'Business Man' },
   { id: 'CharacterAnimated', label: 'Fighter' },
-  { id: 'CharacterBase',     label: 'Character Base' },
+  { id: 'CharacterBase',     label: 'Character Base', noVisitor: true },
   { id: 'EnemySmall',        label: 'Enemy' },
   { id: 'Farmer',            label: 'Farmer' },
   { id: 'HoodedAdventurer',  label: 'Hooded Adventurer' },

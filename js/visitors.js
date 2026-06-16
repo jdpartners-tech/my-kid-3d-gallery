@@ -60,20 +60,27 @@ const ROUTES = [
   ]},
 ]
 
-export async function createVisitors(scene) {
+export async function createVisitors(scene, artworkPositions = []) {
   // Pick unique random characters; mobile loads fewer to save bandwidth and CPU
   const routeCount = IS_MOBILE ? 3 : ROUTES.length
-  const shuffled = [...CHARACTERS].sort(() => Math.random() - 0.5)
+  const shuffled = [...CHARACTERS].filter(c => !c.noVisitor).sort(() => Math.random() - 0.5)
   const picks = shuffled.slice(0, routeCount)
 
   const loader = new GLTFLoader()
   const results = await Promise.allSettled(
-    ROUTES.slice(0, routeCount).map((route, i) => loadVisitor(loader, scene, route, picks[i].id))
+    ROUTES.slice(0, routeCount).map((route, i) => loadVisitor(loader, scene, route, picks[i].id, artworkPositions))
   )
   return results.filter(r => r.status === 'fulfilled').map(r => r.value)
 }
 
-async function loadVisitor(loader, scene, route, charId) {
+async function loadVisitor(loader, scene, route, charId, artworkPositions) {
+  // Drop waypoints that aren't near any actual artwork (z-proximity within half a slot gap).
+  // Routes with fewer than 2 valid waypoints are skipped entirely.
+  const activePts = artworkPositions.length
+    ? route.pts.filter(([, z]) => artworkPositions.some(p => Math.abs(p.z - z) < 2.5))
+    : route.pts
+  if (activePts.length < 2) throw new Error(`route skipped — too few artwork waypoints`)
+
   const gltf = await new Promise((resolve, reject) => {
     loader.load(getCharacterPath(charId), resolve, undefined, reject)
   })
@@ -87,7 +94,7 @@ async function loadVisitor(loader, scene, route, charId) {
   const box2 = new THREE.Box3().setFromObject(mesh)
   const yOffset = -box2.min.y
 
-  const pt = route.pts[route.startIdx % route.pts.length]
+  const pt = activePts[route.startIdx % activePts.length]
   mesh.position.set(pt[0], yOffset, pt[1])
   mesh.rotation.y = route.lookYaw
 
@@ -110,9 +117,9 @@ async function loadVisitor(loader, scene, route, charId) {
 
   return {
     mesh, mixer, walkAction, idleAction, yOffset,
-    pts: route.pts,
+    pts: activePts,
     lookYaw: route.lookYaw,
-    idx: route.startIdx % route.pts.length,
+    idx: route.startIdx % activePts.length,
     pauseLeft: pt[2] * Math.random(),
     pausing: true,
     _state: 'idle',

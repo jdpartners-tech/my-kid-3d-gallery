@@ -223,7 +223,7 @@ function showLoaderError(msg) {
     loadCharacter(scene, selection.path)
       .then(c => { char = c })
       .catch(err => console.warn('Character model failed to load:', err)),
-    createVisitors(scene)
+    createVisitors(scene, allSlots.filter(s => s.artworkIndex !== null).map(s => ({ x: s.position.x, z: s.position.z })))
       .then(v => { visitors = v })
       .catch(err => console.warn('Visitors failed:', err)),
   ])
