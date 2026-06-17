@@ -64,6 +64,19 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
     else                             char.walkAction?.reset().fadeIn(0.2).play()
   }
 
+  // Programmatic hop/float for static models (Pokemon have no skeletal animations)
+  if (!char.walkAction && !char.idleAction) {
+    if (moving) {
+      char._bobTime = (char._bobTime || 0) + delta * (sprinting ? 18 : 12)
+      char.mesh.position.y = Math.abs(Math.sin(char._bobTime)) * 0.12
+      char._floatTime = 0
+    } else {
+      char._bobTime = 0
+      char._floatTime = (char._floatTime || 0) + delta * 2.0
+      char.mesh.position.y = Math.sin(char._floatTime) * 0.04
+    }
+  }
+
   if (!moving) return
 
   const dir = new THREE.Vector3()

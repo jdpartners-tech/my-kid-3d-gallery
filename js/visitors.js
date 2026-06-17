@@ -146,6 +146,13 @@ export function updateVisitors(visitors, delta, charPos) {
         v.idleAction?.reset().fadeIn(0.3).play()
       }
 
+      // Gentle float for static models when idle
+      if (!v.walkAction && !v.idleAction) {
+        v._bobTime = 0
+        v._floatTime = (v._floatTime || 0) + delta * 2.0
+        v.mesh.position.y = v.yOffset + Math.sin(v._floatTime) * 0.04
+      }
+
       if (v.pauseLeft <= 0) {
         v.idx = (v.idx + 1) % v.pts.length
         v.pausing = false
@@ -223,6 +230,13 @@ export function updateVisitors(visitors, delta, charPos) {
       v._state = 'walk'
       v.idleAction?.fadeOut(0.3)
       v.walkAction?.reset().fadeIn(0.3).play()
+    }
+
+    // Hop animation for static models
+    if (!v.walkAction && !v.idleAction) {
+      v._bobTime = (v._bobTime || 0) + delta * 12
+      v._floatTime = 0
+      v.mesh.position.y = v.yOffset + Math.abs(Math.sin(v._bobTime)) * 0.10
     }
 
     if (!blocked) {
