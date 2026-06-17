@@ -83,7 +83,7 @@ export function showArtworkSettings(manifest) {
           state.rotate = ((state.rotate + deg) + 360) % 360
           img.style.transform = `rotate(${state.rotate}deg)`
           const ovrs = getArtworkOverrides()
-          if (state.rotate === 0) delete ovrs[key]
+          if (state.rotate === baseRotate) delete ovrs[key]
           else ovrs[key] = { rotate: state.rotate }
           saveOverrides(ovrs)
         }
