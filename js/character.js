@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { findAnim, getCharacterTargetHeight, getWalkTimeScale } from './character-select.js'
+import { findAnim, getCharacterTargetHeight, getCharacterFacingOffset, getWalkTimeScale } from './character-select.js'
 
 const SPEED = 4.0
 const CHAR_RADIUS = 0.35
@@ -44,6 +44,8 @@ export async function loadCharacter(scene, modelPath = 'assets/characters/Advent
   return {
     mesh, mixer, walkAction, idleAction, runAction,
     _state: 'idle', _yaw: 0,
+    _facingOffset: getCharacterFacingOffset(modelPath),
+    _baseY: mesh.position.y,
   }
 }
 
@@ -68,12 +70,12 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
   if (!char.walkAction && !char.idleAction) {
     if (moving) {
       char._bobTime = (char._bobTime || 0) + delta * (sprinting ? 18 : 12)
-      char.mesh.position.y = Math.abs(Math.sin(char._bobTime)) * 0.12
+      char.mesh.position.y = char._baseY + Math.abs(Math.sin(char._bobTime)) * 0.12
       char._floatTime = 0
     } else {
       char._bobTime = 0
       char._floatTime = (char._floatTime || 0) + delta * 2.0
-      char.mesh.position.y = Math.sin(char._floatTime) * 0.04
+      char.mesh.position.y = char._baseY + Math.sin(char._floatTime) * 0.04
     }
   }
 
@@ -94,8 +96,7 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
   const pureBackward = input.backward && !input.forward && !input.left && !input.right
   if (!pureBackward && dir.length() > 0.01) {
     const targetRot = Math.atan2(-dir.x, -dir.z)
-    // Quaternius faces +Z at rotation.y=0, so target mesh rotation = logical yaw - π
-    let rotDiff = (targetRot - Math.PI) - char.mesh.rotation.y
+    let rotDiff = (targetRot - char._facingOffset) - char.mesh.rotation.y
     while (rotDiff >  Math.PI) rotDiff -= 2 * Math.PI
     while (rotDiff < -Math.PI) rotDiff += 2 * Math.PI
     char.mesh.rotation.y += rotDiff * Math.min(1, delta * 0.5)
@@ -138,9 +139,7 @@ export function updateCharacter(char, delta, input, allBounds, npcMeshes = []) {
 }
 
 export function updateCamera(camera, char, delta, input) {
-  // Auto-follow: smoothly swing camera behind the character's current facing direction
-  // Quaternius: mesh.rotation.y = logical yaw - π, so logical yaw = mesh + π
-  char._yaw = char.mesh.rotation.y + Math.PI
+  char._yaw = char.mesh.rotation.y + char._facingOffset
   input.dx = 0  // manual drag no longer used
 
   const offset = CAM_OFFSET.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), char._yaw)

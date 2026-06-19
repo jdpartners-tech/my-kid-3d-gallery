@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
-import { CHARACTERS, findAnim, getCharacterPath, getCharacterTargetHeight } from './character-select.js'
+import { CHARACTERS, findAnim, getCharacterPath, getCharacterTargetHeight, getCharacterFacingOffset } from './character-select.js'
 import { IS_MOBILE } from './mobile.js'
 
 const SPEED = 1.8  // m/s
@@ -94,9 +94,10 @@ async function loadVisitor(loader, scene, route, charId, artworkPositions) {
   const box2 = new THREE.Box3().setFromObject(mesh)
   const yOffset = -box2.min.y
 
+  const facingOffset = getCharacterFacingOffset(getCharacterPath(charId))
   const pt = activePts[route.startIdx % activePts.length]
   mesh.position.set(pt[0], yOffset, pt[1])
-  mesh.rotation.y = route.lookYaw
+  mesh.rotation.y = route.lookYaw + Math.PI - facingOffset
 
   mesh.traverse(c => {
     if (c.isMesh) {
@@ -119,6 +120,7 @@ async function loadVisitor(loader, scene, route, charId, artworkPositions) {
     mesh, mixer, walkAction, idleAction, yOffset,
     pts: activePts,
     lookYaw: route.lookYaw,
+    _facingOffset: facingOffset,
     idx: route.startIdx % activePts.length,
     pauseLeft: pt[2] * Math.random(),
     pausing: true,
@@ -135,7 +137,7 @@ export function updateVisitors(visitors, delta, charPos) {
 
     if (v.pausing) {
       v.pauseLeft -= delta
-      let diff = v.lookYaw - v.mesh.rotation.y
+      let diff = (v.lookYaw + Math.PI - v._facingOffset) - v.mesh.rotation.y
       while (diff >  Math.PI) diff -= 2 * Math.PI
       while (diff < -Math.PI) diff += 2 * Math.PI
       v.mesh.rotation.y += diff * Math.min(1, delta * 1.8)
@@ -242,7 +244,7 @@ export function updateVisitors(visitors, delta, charPos) {
     if (!blocked) {
       v.mesh.position.x = nx
       v.mesh.position.z = nz
-      v.mesh.rotation.y = Math.atan2(moveX, moveZ)  // face actual travel direction (steered)
+      v.mesh.rotation.y = Math.atan2(moveX, moveZ) + Math.PI - v._facingOffset
       v._blockedTime = 0
     } else {
       v._blockedTime = (v._blockedTime || 0) + delta
